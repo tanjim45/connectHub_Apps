@@ -1,6 +1,7 @@
+import 'package:connecthub/models/post_model.dart';
 import 'package:connecthub/service/post_service.dart';
 import 'package:flutter/material.dart';
-import '../../widgets/post_card.dart';
+
 
 class HomePage extends StatefulWidget {
   final bool isDarkMode;
@@ -20,7 +21,7 @@ class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
   final TextEditingController postController = TextEditingController();
 
-  List<dynamic> apiPosts = [];
+  List<PostModel> apiPosts = [];
   bool isLoading = false;
   String? errorMessage;
 
