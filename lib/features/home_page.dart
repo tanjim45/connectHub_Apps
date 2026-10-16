@@ -1,3 +1,4 @@
+import 'package:connecthub/features/explore_page.dart';
 import 'package:connecthub/features/post_search_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:connecthub/models/post_model.dart';
@@ -534,56 +535,61 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSelectedPage() {
-    if (selectedIndex == 0) return _buildHomeContent();
-
-    final descriptions = [
-      '',
-      'Explore posts coming soon.',
-      'Create Post feature coming soon.',
-      'Chat feature coming soon.',
-      'Profile feature coming soon.',
-    ];
-
-    final icons = [
-      Icons.home_rounded,
-      Icons.explore_rounded,
-      Icons.add_box_rounded,
-      Icons.chat_bubble_rounded,
-      Icons.person_rounded,
-    ];
-
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icons[selectedIndex],
-              size: 42,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            pageTitles[selectedIndex],
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text(descriptions[selectedIndex]),
-        ],
-      ),
-    );
+Widget _buildSelectedPage() {
+  if (selectedIndex == 0) {
+    return _buildHomeContent();
   }
 
+  if (selectedIndex == 1) {
+    return const ExplorePage();
+  }
+
+  final descriptions = [
+    '',
+    '',
+    'Create Post feature coming soon.',
+    'Chat feature coming soon.',
+    'Profile feature coming soon.',
+  ];
+
+  final icons = [
+    Icons.home_rounded,
+    Icons.explore_rounded,
+    Icons.add_box_rounded,
+    Icons.chat_bubble_rounded,
+    Icons.person_rounded,
+  ];
+
+  return Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icons[selectedIndex],
+            size: 42,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          pageTitles[selectedIndex],
+          style: Theme.of(context)
+              .textTheme
+              .headlineSmall
+              ?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(descriptions[selectedIndex]),
+      ],
+    ),
+  );
+}
   Widget _buildNavigationItem(
     int index,
     IconData icon,
@@ -689,8 +695,13 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       AppBar(
                         title: Text(
-                          pageTitles[selectedIndex],
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                          selectedIndex == 0
+                              ? 'ConnectHub'
+                              : pageTitles[selectedIndex],
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 22,
+                          ),
                         ),
                         actions: [
                           IconButton(
@@ -719,7 +730,15 @@ class _HomePageState extends State<HomePage> {
         if (width >= 600) {
           return Scaffold(
             appBar: AppBar(
-              title: Text(pageTitles[selectedIndex]),
+              title: Text(
+                selectedIndex == 0
+                    ? 'ConnectHub'
+                    : pageTitles[selectedIndex],
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 22,
+                ),
+              ),
               actions: [
                 IconButton(
                   tooltip: 'Toggle theme',
@@ -739,7 +758,15 @@ class _HomePageState extends State<HomePage> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(pageTitles[selectedIndex]),
+            title: Text(
+                selectedIndex == 0
+                    ? 'ConnectHub'
+                    : pageTitles[selectedIndex],
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 22,
+                ),
+              ),
             actions: [
               IconButton(
                 tooltip: 'Toggle theme',

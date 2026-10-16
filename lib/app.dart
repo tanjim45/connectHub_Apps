@@ -12,10 +12,10 @@ class ConnectHubApp extends StatefulWidget {
 }
 
 class _ConnectHubAppState extends State<ConnectHubApp> {
-  // Dark mode-এর বর্তমান অবস্থা
+  // Dark mode
   bool isDarkMode = false;
 
-  // Theme পরিবর্তন করার function
+  // Theme change function
   void toggleTheme(bool value) {
     setState(() {
       isDarkMode = value;
@@ -28,7 +28,7 @@ class _ConnectHubAppState extends State<ConnectHubApp> {
       debugShowCheckedModeBanner: false,
       title: 'ConnectHub',
 
-      // Light ও Dark theme
+      // Light Dark theme
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
