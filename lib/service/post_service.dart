@@ -1,5 +1,6 @@
 
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 import 'package:connecthub/models/post_model.dart';
 import 'package:connecthub/models/user_model.dart';
@@ -11,8 +12,10 @@ class PostService {
   static const String usersUrl =
       'https://jsonplaceholder.typicode.com/users';
 
-  // API  page posts 
-  
+  static const String photosUrl =
+      'https://jsonplaceholder.typicode.com/photos';
+
+  // Fetch posts with pagination.
   static Future<List<PostModel>> fetchPosts({
     int page = 1,
     int limit = 10,
@@ -42,7 +45,7 @@ class PostService {
     );
   }
 
-  // User ID user-username ।
+  // Fetch a user profile.
   static Future<UserModel> fetchUser(int userId) async {
     final response = await http.get(
       Uri.parse('$usersUrl/$userId'),
@@ -57,6 +60,34 @@ class PostService {
 
     throw Exception(
       'User load failed: ${response.statusCode}',
+    );
+  }
+
+  // Fetch photo data from API.
+  static Future<List<Map<String, dynamic>>> fetchPhotos({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final uri = Uri.parse(photosUrl).replace(
+      queryParameters: {
+        '_page': page.toString(),
+        '_limit': limit.toString(),
+      },
+    );
+
+    final response = await http.get(uri);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonData =
+          jsonDecode(response.body) as List<dynamic>;
+
+      return jsonData.map((item) {
+        return item as Map<String, dynamic>;
+      }).toList();
+    }
+
+    throw Exception(
+      'Photos load failed: ${response.statusCode}',
     );
   }
 }

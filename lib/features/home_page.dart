@@ -1,10 +1,10 @@
-
-import 'package:connecthub/features/user_info.dart';
+import 'package:connecthub/features/post_search_bar.dart';
 import 'package:flutter/material.dart';
-
 import 'package:connecthub/models/post_model.dart';
 import 'package:connecthub/models/user_model.dart';
 import 'package:connecthub/service/post_service.dart';
+import 'package:connecthub/features/post_card.dart';
+
 
 class HomePage extends StatefulWidget {
   final bool isDarkMode;
@@ -28,6 +28,11 @@ class _HomePageState extends State<HomePage> {
 
   List<PostModel> apiPosts = [];
 
+  final TextEditingController searchController =
+      TextEditingController();
+
+  String searchQuery = '';
+
   bool isLoading = true;
   bool isLoadingMore = false;
   bool hasMore = true;
@@ -42,7 +47,6 @@ class _HomePageState extends State<HomePage> {
 
   final Set<int> likedPostIds = {};
   final Map<int, int> likeCounts = {};
-
   final Map<int, List<String>> postComments = {};
   final Map<int, TextEditingController> commentControllers = {};
 
@@ -53,6 +57,17 @@ class _HomePageState extends State<HomePage> {
     'Chat',
     'Profile',
   ];
+
+  List<PostModel> get filteredPosts {
+    final query = searchQuery.trim().toLowerCase();
+
+    if (query.isEmpty) return apiPosts;
+
+    return apiPosts.where((post) {
+      return post.title.toLowerCase().contains(query) ||
+          post.body.toLowerCase().contains(query);
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -65,6 +80,7 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    searchController.dispose();
 
     for (final controller in commentControllers.values) {
       controller.dispose();
@@ -73,17 +89,51 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  // Load more posts when scrolling
   void _onScroll() {
     if (!_scrollController.hasClients) return;
 
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 300) {
-      loadMorePosts();
+      if (searchQuery.trim().isEmpty) {
+        loadMorePosts();
+      }
     }
   }
 
-  // Fetch first page from API
+  // Fetch image data and attach it to each post.
+  Future<List<PostModel>> attachPhotos(
+    List<PostModel> posts, {
+    required int page,
+  }) async {
+    try {
+      final photos = await PostService.fetchPhotos(
+        page: page,
+        limit: pageSize,
+      );
+
+      final photoById = <int, Map<String, dynamic>>{
+        for (final photo in photos)
+          photo['id'] as int: photo,
+      };
+
+      return posts.map((post) {
+        final photo = photoById[post.id];
+
+        return PostModel(
+          userId: post.userId,
+          id: post.id,
+          title: post.title,
+          body: post.body,
+          imageUrl: photo?['url'] as String?,
+          thumbnailUrl: photo?['thumbnailUrl'] as String?,
+        );
+      }).toList();
+    } catch (_) {
+      // Keep posts visible even if the photo API fails.
+      return posts;
+    }
+  }
+
   Future<void> loadPosts() async {
     setState(() {
       isLoading = true;
@@ -101,25 +151,30 @@ class _HomePageState extends State<HomePage> {
         limit: pageSize,
       );
 
+      final postsWithPhotos = await attachPhotos(
+        posts,
+        page: 1,
+      );
+
       if (!mounted) return;
 
       setState(() {
-        apiPosts = posts;
+        apiPosts = postsWithPhotos;
         currentPage = 1;
         hasMore = posts.length == pageSize;
         isLoading = false;
       });
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
 
       setState(() {
-        errorMessage = 'Posts could not load. Check your internet.';
+        errorMessage =
+            'Posts could not load. Check your internet.';
         isLoading = false;
       });
     }
   }
 
-  // Infinite scrolling
   Future<void> loadMorePosts() async {
     if (isLoading ||
         isLoadingMore ||
@@ -140,12 +195,18 @@ class _HomePageState extends State<HomePage> {
         limit: pageSize,
       );
 
+      final newPostsWithPhotos = await attachPhotos(
+        newPosts,
+        page: nextPage,
+      );
+
       if (!mounted) return;
 
       setState(() {
-        final existingIds = apiPosts.map((post) => post.id).toSet();
+        final existingIds =
+            apiPosts.map((post) => post.id).toSet();
 
-        final uniquePosts = newPosts
+        final uniquePosts = newPostsWithPhotos
             .where((post) => !existingIds.contains(post.id))
             .toList();
 
@@ -156,7 +217,7 @@ class _HomePageState extends State<HomePage> {
         isLoadingMore = false;
         loadMoreError = null;
       });
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
 
       setState(() {
@@ -166,7 +227,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Fetch and cache user information
   Future<UserModel> getUser(int userId) {
     if (userCache.containsKey(userId)) {
       return Future.value(userCache[userId]!);
@@ -189,7 +249,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Like and unlike
   void toggleLike(PostModel post) {
     setState(() {
       if (likedPostIds.contains(post.id)) {
@@ -203,7 +262,6 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Add a comment
   void addComment(PostModel post) {
     final controller = commentControllers.putIfAbsent(
       post.id,
@@ -211,7 +269,6 @@ class _HomePageState extends State<HomePage> {
     );
 
     final text = controller.text.trim();
-
     if (text.isEmpty) return;
 
     setState(() {
@@ -223,267 +280,116 @@ class _HomePageState extends State<HomePage> {
     FocusScope.of(context).unfocus();
   }
 
-  // User avatar and profile information
-  Widget _buildUserInfo(int userId) {
-    return FutureBuilder<UserModel>(
-      future: getUser(userId),
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Row(
+  Widget _buildPostCard(PostModel post) {
+    return PostCard(
+      post: post,
+      isLiked: likedPostIds.contains(post.id),
+      likeCount: likeCounts[post.id] ?? 0,
+      comments: postComments[post.id] ?? [],
+      commentController: commentControllers.putIfAbsent(
+        post.id,
+        () => TextEditingController(),
+      ),
+      getUser: getUser,
+      onLike: () => toggleLike(post),
+      onAddComment: () => addComment(post),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    final colors = Theme.of(context).colorScheme;
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(20),
+      itemCount: 3,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: colors.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const CircleAvatar(
-                backgroundColor: Color(0xFFE2ECFA),
-                child: Icon(Icons.person, color: Color(0xFF2684FF)),
-              ),
-              const SizedBox(width: 12),
-              const Text('Unknown user'),
-            ],
-          );
-        }
-
-        if (!snapshot.hasData) {
-          return const Row(
-            children: [
-              SizedBox(
-                width: 42,
-                height: 42,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              SizedBox(width: 12),
-              Text('Loading profile...'),
-            ],
-          );
-        }
-
-        final user = snapshot.data!;
-
-        return Row(
-          children: [
-            CircleAvatar(
-              radius: 23,
-              backgroundColor: const Color(0xFFDCEBFF),
-              child: Text(
-                user.name.isNotEmpty
-                    ? user.name[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(
-                  color: Color(0xFF1769C2),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(
-                    user.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    '@${user.username}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  _skeletonBox(46, 46, radius: 50),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _skeletonBox(150, 12),
+                        const SizedBox(height: 8),
+                        _skeletonBox(90, 10),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
-            Icon(
-              Icons.public,
-              size: 19,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ],
+              const SizedBox(height: 18),
+              _skeletonBox(double.infinity, 220, radius: 14),
+              const SizedBox(height: 16),
+              _skeletonBox(220, 13),
+              const SizedBox(height: 9),
+              _skeletonBox(170, 13),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  _skeletonBox(65, 28, radius: 8),
+                  const SizedBox(width: 16),
+                  _skeletonBox(75, 28, radius: 8),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  // Modern post card
-  Widget _buildPostCard(PostModel post) {
-    final isLiked = likedPostIds.contains(post.id);
-    final comments = postComments[post.id] ?? [];
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 20),
-      elevation: 1,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: BorderSide(
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.35),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            UserInfo( userId: post.userId,
-  getUser: getUser,),
-
-            const SizedBox(height: 22),
-
-            Text(
-              post.title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    height: 1.4,
-                  ),
-            ),
-
-            const SizedBox(height: 10),
-
-            Text(
-              post.body,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    height: 1.75,
-                  ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Like and comment counts
-            Row(
-              children: [
-                Icon(
-                  Icons.favorite,
-                  size: 16,
-                  color: isLiked ? Colors.red : Colors.grey,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '${likeCounts[post.id] ?? 0} likes',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const Spacer(),
-                Text(
-                  '${comments.length} comments',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-
-            const Divider(height: 28),
-
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: _ActionButton(
-                    icon: isLiked
-                        ? Icons.favorite
-                        : Icons.favorite_border,
-                    label: 'Like',
-                    color: isLiked ? Colors.red : null,
-                    onTap: () => toggleLike(post),
-                  ),
-                ),
-                Expanded(
-                  child: _ActionButton(
-                    icon: Icons.mode_comment_outlined,
-                    label: 'Comment',
-                    onTap: () {
-                      FocusScope.of(context).requestFocus(
-                        FocusNode(),
-                      );
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Write your comment in the box below.',
-                          ),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // Comment input
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: commentControllers.putIfAbsent(
-                      post.id,
-                      () => TextEditingController(),
-                    ),
-                    minLines: 1,
-                    maxLines: 3,
-                    textInputAction: TextInputAction.newline,
-                    decoration: const InputDecoration(
-                      hintText: 'Write a comment...',
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                IconButton.filled(
-                  onPressed: () => addComment(post),
-                  tooltip: 'Send comment',
-                  icon: const Icon(Icons.send_rounded),
-                ),
-              ],
-            ),
-
-            // Comments
-            if (comments.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              ...comments.map(
-                (comment) => Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(13),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const CircleAvatar(
-                        radius: 15,
-                        child: Icon(Icons.person, size: 17),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(comment)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
+  Widget _skeletonBox(
+    double width,
+    double height, {
+    double radius = 6,
+  }) {
+    return Container(
+      width: width.isInfinite ? null : width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(radius),
       ),
     );
   }
 
-  // Home feed
   Widget _buildHomeContent() {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: PostSearchBar(
+              controller: searchController,
+              onChanged: (value) {
+                setState(() => searchQuery = value);
+              },
+            ),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: loadPosts,
+              child: _buildLoadingState(),
+            ),
+          ),
+        ],
+      );
     }
 
     if (errorMessage != null) {
@@ -493,7 +399,7 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off, size: 52),
+              const Icon(Icons.cloud_off_rounded, size: 52),
               const SizedBox(height: 14),
               Text(errorMessage!),
               const SizedBox(height: 14),
@@ -508,95 +414,128 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    if (apiPosts.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.dynamic_feed_outlined,
-              size: 56,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 12),
-            const Text('No posts found.'),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: loadPosts,
-              child: const Text('Refresh'),
-            ),
-          ],
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: PostSearchBar(
+            controller: searchController,
+            onChanged: (value) {
+              setState(() => searchQuery = value);
+            },
+          ),
         ),
-      );
-    }
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: loadPosts,
+            child: Builder(
+              builder: (context) {
+                final posts = filteredPosts;
+                final searching = searchQuery.trim().isNotEmpty;
 
-    return RefreshIndicator(
-      onRefresh: loadPosts,
-      child: ListView.builder(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 20,
-          vertical: 24,
-        ),
-        itemCount: apiPosts.length +
-            ((isLoadingMore || loadMoreError != null || !hasMore) ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index == apiPosts.length) {
-            if (isLoadingMore) {
-              return const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-
-            if (loadMoreError != null) {
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: Center(
-                  child: Column(
+                if (posts.isEmpty) {
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(32),
                     children: [
-                      Text(loadMoreError!),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() => loadMoreError = null);
-                          loadMorePosts();
-                        },
-                        child: const Text('Retry'),
+                      const SizedBox(height: 70),
+                      Icon(
+                        searching
+                            ? Icons.search_off_rounded
+                            : Icons.dynamic_feed_outlined,
+                        size: 56,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Text(
+                          searching
+                              ? 'No matching posts found.'
+                              : 'No posts found.',
+                        ),
                       ),
                     ],
+                  );
+                }
+
+                final showFooter = !searching &&
+                    (isLoadingMore ||
+                        loadMoreError != null ||
+                        !hasMore);
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 24,
                   ),
-                ),
-              );
-            }
+                  itemCount: posts.length + (showFooter ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == posts.length) {
+                      if (isLoadingMore) {
+                        return const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
 
-            if (!hasMore) {
-              return const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(
-                  child: Text('🎉 You have seen all posts!'),
-                ),
-              );
-            }
-          }
+                      if (loadMoreError != null) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Text(loadMoreError!),
+                                const SizedBox(height: 8),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      loadMoreError = null;
+                                    });
+                                    loadMorePosts();
+                                  },
+                                  child: const Text('Retry'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
 
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1000),
-              child: _buildPostCard(apiPosts[index]),
+                      if (!hasMore) {
+                        return const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(
+                            child: Text('🎉 You have seen all posts!'),
+                          ),
+                        );
+                      }
+                    }
+
+                    return Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 680),
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: _buildPostCard(posts[index]),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
             ),
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
 
-  // Placeholder pages
   Widget _buildSelectedPage() {
-    if (selectedIndex == 0) {
-      return _buildHomeContent();
-    }
+    if (selectedIndex == 0) return _buildHomeContent();
 
     final descriptions = [
       '',
@@ -633,9 +572,10 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 20),
           Text(
             pageTitles[selectedIndex],
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(descriptions[selectedIndex]),
@@ -644,7 +584,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Navigation item
   Widget _buildNavigationItem(
     int index,
     IconData icon,
@@ -653,7 +592,10 @@ class _HomePageState extends State<HomePage> {
     final selected = selectedIndex == index;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 3,
+      ),
       child: ListTile(
         leading: Icon(
           icon,
@@ -683,7 +625,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Sidebar
   Widget _buildNavigationMenu() {
     return SafeArea(
       child: Column(
@@ -731,7 +672,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Main responsive layout
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -742,10 +682,7 @@ class _HomePageState extends State<HomePage> {
           return Scaffold(
             body: Row(
               children: [
-                SizedBox(
-                  width: 270,
-                  child: _buildNavigationMenu(),
-                ),
+                SizedBox(width: 270, child: _buildNavigationMenu()),
                 const VerticalDivider(width: 1),
                 Expanded(
                   child: Column(
@@ -753,9 +690,7 @@ class _HomePageState extends State<HomePage> {
                       AppBar(
                         title: Text(
                           pageTitles[selectedIndex],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         actions: [
                           IconButton(
@@ -763,9 +698,7 @@ class _HomePageState extends State<HomePage> {
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text(
-                                    'Notifications coming soon!',
-                                  ),
+                                  content: Text('Notifications coming soon!'),
                                 ),
                               );
                             },
@@ -855,44 +788,6 @@ class _HomePageState extends State<HomePage> {
           ),
         );
       },
-    );
-  }
-}
-
-// Reusable action button
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color? color;
-  final VoidCallback onTap;
-
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final effectiveColor = color ?? Theme.of(context).colorScheme.onSurfaceVariant;
-
-    return TextButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, color: effectiveColor, size: 20),
-      label: Text(
-        label,
-        style: TextStyle(
-          color: effectiveColor,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      style: TextButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
     );
   }
 }
