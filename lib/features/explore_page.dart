@@ -1,6 +1,7 @@
-import 'package:connecthub/models/user_model.dart';
+
 import 'package:flutter/material.dart';
 import 'package:connecthub/models/post_model.dart';
+import 'package:connecthub/models/user_model.dart';
 import 'package:connecthub/service/post_service.dart';
 
 class ExplorePage extends StatefulWidget {
@@ -15,8 +16,10 @@ class _ExplorePageState extends State<ExplorePage> {
       TextEditingController();
 
   List<PostModel> _posts = [];
+
   final Map<int, UserModel> _userCache = {};
-final Map<int, Future<UserModel>> _userRequests = {};
+  final Map<int, Future<UserModel>> _userRequests = {};
+
   bool _isLoading = true;
   String? _errorMessage;
   String _searchQuery = '';
@@ -33,32 +36,35 @@ final Map<int, Future<UserModel>> _userRequests = {};
     super.dispose();
   }
 
+  // API থেকে user information আনা এবং cache করা
+  Future<UserModel> _getUser(int userId) {
+    if (_userCache.containsKey(userId)) {
+      return Future.value(_userCache[userId]!);
+    }
+
+    if (_userRequests.containsKey(userId)) {
+      return _userRequests[userId]!;
+    }
+
+    final request = PostService.fetchUser(userId);
+    _userRequests[userId] = request;
+
+    return request.then((user) {
+      _userCache[userId] = user;
+      _userRequests.remove(userId);
+      return user;
+    }).catchError((error) {
+      _userRequests.remove(userId);
+      throw error;
+    });
+  }
+
+  // API থেকে posts load করা
   Future<void> _loadPosts() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
-    Future<UserModel> _getUser(int userId) {
-  if (_userCache.containsKey(userId)) {
-    return Future.value(_userCache[userId]!);
-  }
-
-  if (_userRequests.containsKey(userId)) {
-    return _userRequests[userId]!;
-  }
-
-  final request = PostService.fetchUser(userId);
-  _userRequests[userId] = request;
-
-  return request.then((user) {
-    _userCache[userId] = user;
-    _userRequests.remove(userId);
-    return user;
-  }).catchError((error) {
-    _userRequests.remove(userId);
-    throw error;
-  });
-}
 
     try {
       final posts = await PostService.fetchPosts(
@@ -83,6 +89,7 @@ final Map<int, Future<UserModel>> _userRequests = {};
     }
   }
 
+  // Search অনুযায়ী posts filter করা
   List<PostModel> get _filteredPosts {
     final query = _searchQuery.trim().toLowerCase();
 
@@ -96,8 +103,7 @@ final Map<int, Future<UserModel>> _userRequests = {};
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final colors = Theme.of(context).colorScheme;
     final posts = _filteredPosts;
 
     return Column(
@@ -107,7 +113,9 @@ final Map<int, Future<UserModel>> _userRequests = {};
           child: TextField(
             controller: _searchController,
             onChanged: (value) {
-              setState(() => _searchQuery = value);
+              setState(() {
+                _searchQuery = value;
+              });
             },
             decoration: InputDecoration(
               hintText: 'Explore posts...',
@@ -117,7 +125,9 @@ final Map<int, Future<UserModel>> _userRequests = {};
                       tooltip: 'Clear search',
                       onPressed: () {
                         _searchController.clear();
-                        setState(() => _searchQuery = '');
+                        setState(() {
+                          _searchQuery = '';
+                        });
                       },
                       icon: const Icon(Icons.close_rounded),
                     )
@@ -155,7 +165,10 @@ final Map<int, Future<UserModel>> _userRequests = {};
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off_rounded, size: 48),
+              const Icon(
+                Icons.cloud_off_rounded,
+                size: 48,
+              ),
               const SizedBox(height: 12),
               Text(
                 _errorMessage!,
@@ -223,7 +236,7 @@ final Map<int, Future<UserModel>> _userRequests = {};
                       context: context,
                       isScrollControlled: true,
                       showDragHandle: true,
-                      builder: (context) {
+                      builder: (sheetContext) {
                         return SafeArea(
                           child: SingleChildScrollView(
                             padding: const EdgeInsets.fromLTRB(
@@ -233,6 +246,37 @@ final Map<int, Future<UserModel>> _userRequests = {};
                               crossAxisAlignment:
                                   CrossAxisAlignment.start,
                               children: [
+                                FutureBuilder<UserModel>(
+                                  future: _getUser(post.userId),
+                                  builder: (context, snapshot) {
+                                    final user = snapshot.data;
+
+                                    return ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      leading: CircleAvatar(
+                                        backgroundColor:
+                                            colors.primaryContainer,
+                                        child: Text(
+                                          user != null &&
+                                                  user.name.isNotEmpty
+                                              ? user.name[0].toUpperCase()
+                                              : '?',
+                                          style: TextStyle(
+                                            color: colors
+                                                .onPrimaryContainer,
+                                          ),
+                                        ),
+                                      ),
+                                      title: Text(
+                                        user?.name ?? 'Loading user...',
+                                      ),
+                                      subtitle: user != null
+                                          ? Text('@${user.username}')
+                                          : null,
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 12),
                                 Text(
                                   post.title,
                                   style: Theme.of(context)
@@ -264,32 +308,83 @@ final Map<int, Future<UserModel>> _userRequests = {};
                       crossAxisAlignment:
                           CrossAxisAlignment.start,
                       children: [
-                       Row(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: colors.primaryContainer,
-                                    child: Icon(
-                                      Icons.person_outline_rounded,
-                                      color: colors.onPrimaryContainer,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'Post #${post.id}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
+                        // Post author's name and avatar
+                        Row(
+                          children: [
+                            FutureBuilder<UserModel>(
+                              future: _getUser(post.userId),
+                              builder: (context, snapshot) {
+                                final user = snapshot.data;
+
+                                return CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor:
+                                      colors.primaryContainer,
+                                  child: user == null
+                                      ? Icon(
+                                          Icons.person_outline_rounded,
+                                          color:
+                                              colors.onPrimaryContainer,
+                                        )
+                                      : Text(
+                                          user.name.isNotEmpty
+                                              ? user.name[0]
+                                                  .toUpperCase()
+                                              : '?',
+                                          style: TextStyle(
+                                            color: colors
+                                                .onPrimaryContainer,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: FutureBuilder<UserModel>(
+                                future: _getUser(post.userId),
+                                builder: (context, snapshot) {
+                                  final user = snapshot.data;
+
+                                  return Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        user?.name ??
+                                            'Loading user...',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                  Icon(
-                                    Icons.open_in_new_rounded,
-                                    size: 18,
-                                    color: colors.onSurfaceVariant,
-                                  ),
-                                ],
+                                      if (user != null)
+                                        Text(
+                                          '@${user.username}',
+                                          maxLines: 1,
+                                          overflow:
+                                              TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                    ],
+                                  );
+                                },
                               ),
+                            ),
+                            Icon(
+                              Icons.open_in_new_rounded,
+                              size: 18,
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 16),
+
+                        // Post title
                         Text(
                           post.title,
                           maxLines: 3,
@@ -302,6 +397,8 @@ final Map<int, Future<UserModel>> _userRequests = {};
                               ),
                         ),
                         const SizedBox(height: 8),
+
+                        // Post body
                         Expanded(
                           child: Text(
                             post.body,
@@ -313,6 +410,7 @@ final Map<int, Future<UserModel>> _userRequests = {};
                           ),
                         ),
                         const SizedBox(height: 8),
+
                         Row(
                           children: [
                             Icon(
