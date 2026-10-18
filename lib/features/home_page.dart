@@ -1,3 +1,4 @@
+import 'package:connecthub/features/chat_page.dart';
 import 'package:connecthub/features/create_post_page.dart';
 import 'package:connecthub/features/explore_page.dart';
 import 'package:connecthub/features/post_search_bar.dart';
@@ -282,21 +283,24 @@ class _HomePageState extends State<HomePage> {
     FocusScope.of(context).unfocus();
   }
 
-  Widget _buildPostCard(PostModel post) {
-    return PostCard(
-      post: post,
-      isLiked: likedPostIds.contains(post.id),
-      likeCount: likeCounts[post.id] ?? 0,
-      comments: postComments[post.id] ?? [],
-      commentController: commentControllers.putIfAbsent(
-        post.id,
-        () => TextEditingController(),
-      ),
-      getUser: getUser,
-      onLike: () => toggleLike(post),
-      onAddComment: () => addComment(post),
-    );
-  }
+ 
+Widget _buildPostCard(PostModel post) {
+  return PostCard(
+    post: post,
+    localImageBytes: post.localImageBytes,
+    isLiked: likedPostIds.contains(post.id),
+    likeCount: likeCounts[post.id] ?? 0,
+    comments: postComments[post.id] ?? [],
+    commentController: commentControllers.putIfAbsent(
+      post.id,
+      () => TextEditingController(),
+    ),
+    getUser: getUser,
+    onLike: () => toggleLike(post),
+    onAddComment: () => addComment(post),
+  );
+}
+
 
   Widget _buildLoadingState() {
     final colors = Theme.of(context).colorScheme;
@@ -563,7 +567,9 @@ Widget _buildSelectedPage() {
       },
     );
 
-  }
+  }if (selectedIndex == 3) {
+  return const ChatPage();
+}
   final descriptions = [
     '',
     '',

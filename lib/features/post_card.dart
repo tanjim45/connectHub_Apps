@@ -85,39 +85,61 @@ class _PostCardState extends State<PostCard> {
           ),
 
           // Post image from API
-          if (widget.post.imageUrl != null &&
-              widget.post.imageUrl!.isNotEmpty)
+          // Post image selected local image or API image
+          if (widget.localImageBytes != null ||
+              (widget.post.imageUrl != null &&
+                  widget.post.imageUrl!.isNotEmpty))
             AspectRatio(
               aspectRatio: 1,
-              child: Image.network(
-                widget.post.imageUrl!,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
+              child: widget.localImageBytes != null
+                  ? Image.memory(
+                      widget.localImageBytes!,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: colors.surfaceContainerHighest,
+                          alignment: Alignment.center,
+                          child: const Icon(
+                            Icons.broken_image_outlined,
+                            size: 44,
+                          ),
+                        );
+                      },
+                    )
+                  : Image.network(
+                      widget.post.imageUrl!,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
 
-                  return Container(
-                    color: colors.surfaceContainerHighest,
-                    alignment: Alignment.center,
-                    child: const CircularProgressIndicator(),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: colors.surfaceContainerHighest,
-                    alignment: Alignment.center,
-                    child: const Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.broken_image_outlined, size: 44),
-                        SizedBox(height: 8),
-                        Text('Image could not load'),
-                      ],
+                        return Container(
+                          color: colors.surfaceContainerHighest,
+                          alignment: Alignment.center,
+                          child: const CircularProgressIndicator(),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: colors.surfaceContainerHighest,
+                          alignment: Alignment.center,
+                          child: const Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.broken_image_outlined,
+                                size: 44,
+                              ),
+                              SizedBox(height: 8),
+                              Text('Image could not load'),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             ),
+
 
           // Post title and caption
           Padding(
