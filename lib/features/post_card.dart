@@ -1,4 +1,6 @@
 
+import 'dart:typed_data';
+
 import 'package:connecthub/features/user_info.dart';
 import 'package:connecthub/models/user_model.dart';
 import 'package:connecthub/models/post_model.dart';
@@ -6,6 +8,7 @@ import 'package:flutter/material.dart';
 
 class PostCard extends StatefulWidget {
   final PostModel post;
+  final Uint8List? localImageBytes;
   final bool isLiked;
   final int likeCount;
   final List<String> comments;
@@ -17,6 +20,7 @@ class PostCard extends StatefulWidget {
   const PostCard({
     super.key,
     required this.post,
+    this.localImageBytes,
     required this.isLiked,
     required this.likeCount,
     required this.comments,

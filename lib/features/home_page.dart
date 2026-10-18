@@ -1,3 +1,4 @@
+import 'package:connecthub/features/create_post_page.dart';
 import 'package:connecthub/features/explore_page.dart';
 import 'package:connecthub/features/post_search_bar.dart';
 import 'package:flutter/material.dart';
@@ -543,7 +544,26 @@ Widget _buildSelectedPage() {
   if (selectedIndex == 1) {
     return const ExplorePage();
   }
+    if (selectedIndex == 2) {
+    return CreatePostPage(
+      onPostCreated: (post) {
+        setState(() {
+          apiPosts.insert(0, post);
+        });
 
+        setState(() {
+          selectedIndex = 0;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('new post  is added to Home feed!'),
+          ),
+        );
+      },
+    );
+
+  }
   final descriptions = [
     '',
     '',

@@ -1,4 +1,6 @@
 
+import 'dart:typed_data';
+
 class PostModel {
   final int userId;
   final int id;
@@ -7,6 +9,8 @@ class PostModel {
   final String? imageUrl;
   final String? thumbnailUrl;
 
+  final Uint8List? localImageBytes;
+
   const PostModel({
     required this.userId,
     required this.id,
@@ -14,6 +18,7 @@ class PostModel {
     required this.body,
     this.imageUrl,
     this.thumbnailUrl,
+    this.localImageBytes,
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {

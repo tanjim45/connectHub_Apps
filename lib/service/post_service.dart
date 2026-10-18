@@ -90,4 +90,34 @@ class PostService {
       'Photos load failed: ${response.statusCode}',
     );
   }
+
+  // Create a new post using API.
+  static Future<PostModel> createPost({
+    required String title,
+    required String body,
+    int userId = 1,
+  }) async {
+    final response = await http.post(
+      Uri.parse(postsUrl),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode({
+        'title': title,
+        'body': body,
+        'userId': userId,
+      }),
+    );
+
+    if (response.statusCode == 201) {
+      final Map<String, dynamic> jsonData =
+          jsonDecode(response.body) as Map<String, dynamic>;
+
+      return PostModel.fromJson(jsonData);
+    }
+
+    throw Exception(
+      'Post creation failed: ${response.statusCode}',
+    );
+  }
 }
