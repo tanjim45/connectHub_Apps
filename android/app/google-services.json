@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "796966176613",
+    "project_id": "blogprectice",
+    "storage_bucket": "blogprectice.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:796966176613:android:d8f4b7aa17bc815c6d438c",
+        "android_client_info": {
+          "package_name": "com.example.connecthub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5AMX7zf606peHSF8DbdqEheZ_3_-rqfM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:796966176613:android:cd3cbf05c071443c6d438c",
+        "android_client_info": {
+          "package_name": "com.example.prectice_blog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5AMX7zf606peHSF8DbdqEheZ_3_-rqfM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

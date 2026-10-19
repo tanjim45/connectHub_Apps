@@ -1,8 +1,6 @@
-
 import 'package:flutter/material.dart';
-
 import 'package:connecthub/core/theme/apps_them.dart';
-import 'package:connecthub/features/home_page.dart';
+import 'package:connecthub/features/auth/auth_gate.dart';
 
 class ConnectHubApp extends StatefulWidget {
   const ConnectHubApp({super.key});
@@ -12,10 +10,8 @@ class ConnectHubApp extends StatefulWidget {
 }
 
 class _ConnectHubAppState extends State<ConnectHubApp> {
-  // Dark mode
   bool isDarkMode = false;
 
-  // Theme change function
   void toggleTheme(bool value) {
     setState(() {
       isDarkMode = value;
@@ -27,14 +23,10 @@ class _ConnectHubAppState extends State<ConnectHubApp> {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'ConnectHub',
-
-      // Light Dark theme
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
-
-      // Home page
-      home: HomePage(
+      home: AuthGate(
         isDarkMode: isDarkMode,
         onThemeChanged: toggleTheme,
       ),

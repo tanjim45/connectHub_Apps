@@ -2,6 +2,7 @@ import 'package:connecthub/features/chat_page.dart';
 import 'package:connecthub/features/create_post_page.dart';
 import 'package:connecthub/features/explore_page.dart';
 import 'package:connecthub/features/post_search_bar.dart';
+import 'package:connecthub/features/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:connecthub/models/post_model.dart';
 import 'package:connecthub/models/user_model.dart';
@@ -569,6 +570,9 @@ Widget _buildSelectedPage() {
 
   }if (selectedIndex == 3) {
   return const ChatPage();
+}
+if (selectedIndex == 4) {
+  return const ProfilePage();
 }
   final descriptions = [
     '',
