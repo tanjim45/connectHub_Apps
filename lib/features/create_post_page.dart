@@ -24,37 +24,43 @@ class _CreatePostPageState extends State<CreatePostPage> {
 
   bool _isPublishing = false;
   final ImagePicker _imagePicker = ImagePicker();
-XFile? _selectedImage;
-bool _isPickingImage = false;
+  XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
+  bool _isPickingImage = false;
 
-Future<void> _pickImage() async {
-  setState(() => _isPickingImage = true);
+  Future<void> _pickImage() async {
+    setState(() => _isPickingImage = true);
 
-  try {
-    final XFile? image = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
 
-    if (!mounted) return;
+      if (image != null) {
+        final bytes = await image.readAsBytes();
 
-    if (image != null) {
-      setState(() => _selectedImage = image);
-    }
-  } catch (e) {
-    if (!mounted) return;
+        if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('ছবি নির্বাচন করা যায়নি। আবার চেষ্টা করো।'),
-      ),
-    );
-  } finally {
-    if (mounted) {
-      setState(() => _isPickingImage = false);
+        setState(() {
+          _selectedImage = image;
+          _selectedImageBytes = bytes;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ছবি নির্বাচন করা যায়নি। আবার চেষ্টা করো।'),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isPickingImage = false);
+      }
     }
   }
-}
 
   @override
   void dispose() {
@@ -81,11 +87,10 @@ Future<void> _pickImage() async {
 
       if (!mounted) return;
 
-            final imageBytes = _selectedImage == null
-          ? null
-          : await _selectedImage!.readAsBytes();
+      final imageBytes = _selectedImageBytes ??
+          (_selectedImage == null ? null : await _selectedImage!.readAsBytes());
 
-          if (!mounted) return;
+      if (!mounted) return;
 
       final postWithImage = PostModel(
         userId: post.userId,
@@ -103,11 +108,14 @@ Future<void> _pickImage() async {
       _bodyController.clear();
       _formKey.currentState?.reset();
 
+      setState(() {
+        _selectedImage = null;
+        _selectedImageBytes = null;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Post created successfully! ID: ${post.id}',
-          ),
+          content: Text('Post created successfully! ID: ${post.id}'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -116,8 +124,8 @@ Future<void> _pickImage() async {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Post তৈরি করা যায়নি। Internet check করে আবার চেষ্টা করো।',
+          content: const Text(
+            'Post তৈরি করা যায়নি। Internet check করে আবার চেষ্টা করো।',
           ),
           behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
@@ -135,6 +143,146 @@ Future<void> _pickImage() async {
     }
   }
 
+  InputDecoration _fieldDecoration(
+    ColorScheme colors, {
+    required String hint,
+    Widget? prefix,
+  }) {
+    OutlineInputBorder border(Color color, [double width = 1]) {
+      return OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: color, width: width),
+      );
+    }
+
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: prefix,
+      filled: true,
+      fillColor: colors.surfaceContainerHighest,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: border(Colors.transparent, 0),
+      enabledBorder: border(Colors.transparent, 0),
+      focusedBorder: border(colors.primary, 1.5),
+      errorBorder: border(colors.error),
+      focusedErrorBorder: border(colors.error, 1.5),
+    );
+  }
+
+  Widget _sectionLabel(ThemeData theme, IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: theme.colorScheme.primary),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildImagePicker(ThemeData theme) {
+    final colors = theme.colorScheme;
+
+    if (_selectedImageBytes != null) {
+      return Column(
+        children: [
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Image.memory(
+                  _selectedImageBytes!,
+                  width: double.infinity,
+                  height: 240,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Row(
+                  children: [
+                    IconButton.filledTonal(
+                      tooltip: 'Change image',
+                      onPressed: _isPickingImage ? null : _pickImage,
+                      icon: const Icon(Icons.photo_library_outlined),
+                    ),
+                    const SizedBox(width: 6),
+                    IconButton.filledTonal(
+                      tooltip: 'Remove image',
+                      onPressed: () {
+                        setState(() {
+                          _selectedImage = null;
+                          _selectedImageBytes = null;
+                        });
+                      },
+                      icon: const Icon(Icons.delete_outline_rounded),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Material(
+      color: colors.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: _isPickingImage ? null : _pickImage,
+        child: Container(
+          width: double.infinity,
+          height: 160,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: colors.outlineVariant),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: _isPickingImage
+                    ? SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: colors.onPrimaryContainer,
+                        ),
+                      )
+                    : Icon(
+                        Icons.add_photo_alternate_outlined,
+                        size: 28,
+                        color: colors.onPrimaryContainer,
+                      ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _isPickingImage ? 'Opening Gallery...' : 'Tap to choose an image',
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -149,7 +297,7 @@ Future<void> _pickImage() async {
             elevation: 0,
             color: colors.surface,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(28),
               side: BorderSide(color: colors.outlineVariant),
             ),
             child: Padding(
@@ -159,18 +307,21 @@ Future<void> _pickImage() async {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Header
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(13),
                           decoration: BoxDecoration(
-                            color: colors.primaryContainer,
-                            borderRadius: BorderRadius.circular(16),
+                            gradient: LinearGradient(
+                              colors: [colors.primary, colors.tertiary],
+                            ),
+                            borderRadius: BorderRadius.circular(18),
                           ),
                           child: Icon(
                             Icons.edit_note_rounded,
-                            size: 30,
-                            color: colors.onPrimaryContainer,
+                            size: 28,
+                            color: colors.onPrimary,
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -180,9 +331,9 @@ Future<void> _pickImage() async {
                             children: [
                               Text(
                                 'Create a Post',
-                                style: theme.textTheme.headlineSmall
-                                    ?.copyWith(
-                                  fontWeight: FontWeight.bold,
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -197,154 +348,25 @@ Future<void> _pickImage() async {
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 28),
-                                          Text(
-                        'Post Image',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
 
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: colors.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: colors.outlineVariant,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (_selectedImage != null) ...[
-                              FutureBuilder<Uint8List>(
-                                future: _selectedImage!.readAsBytes(),
-                                builder: (context, snapshot) {
-                                  if (snapshot.hasData) {
-                                    return ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.memory(
-                                        snapshot.data!,
-                                        width: double.infinity,
-                                        height: 240,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    );
-                                  }
+                    _sectionLabel(theme, Icons.image_outlined, 'Post Image'),
+                    const SizedBox(height: 12),
+                    _buildImagePicker(theme),
 
-                                  return const SizedBox(
-                                    height: 120,
-                                    child: Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                            ] else ...[
-                              SizedBox(
-                                width: double.infinity,
-                                height: 140,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.add_photo_alternate_outlined,
-                                      size: 44,
-                                      color: colors.primary,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Select an image to upload',
-                                      style: TextStyle(
-                                        color: colors.onSurfaceVariant,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                    const SizedBox(height: 24),
 
-                            const SizedBox(height: 8),
-
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    onPressed: _isPickingImage ? null : _pickImage,
-                                    icon: _isPickingImage
-                                        ? const SizedBox(
-                                            width: 18,
-                                            height: 18,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Icon(Icons.photo_library_outlined),
-                                    label: Text(
-                                      _isPickingImage
-                                          ? 'Opening Gallery...'
-                                          : _selectedImage == null
-                                              ? 'Choose Image'
-                                              : 'Change Image',
-                                    ),
-                                  ),
-                                ),
-                                if (_selectedImage != null) ...[
-                                  const SizedBox(width: 8),
-                                  IconButton(
-                                    tooltip: 'Remove image',
-                                    onPressed: () {
-                                      setState(() {
-                                        _selectedImage = null;
-                                      });
-                                    },
-                                    icon: const Icon(Icons.delete_outline_rounded),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                    Text(
-                      'Post Title',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
+                    _sectionLabel(theme, Icons.title_rounded, 'Post Title'),
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: _titleController,
                       maxLength: 100,
                       textCapitalization: TextCapitalization.sentences,
-                      decoration: InputDecoration(
-                        hintText: 'What is your post about?',
-                        prefixIcon: const Icon(Icons.title_rounded),
-                        filled: true,
-                        fillColor: colors.surfaceContainerHighest,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(
-                            color: colors.primary,
-                            width: 1.5,
-                          ),
-                        ),
+                      decoration: _fieldDecoration(
+                        colors,
+                        hint: 'What is your post about?',
+                        prefix: const Icon(Icons.short_text_rounded),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -357,42 +379,23 @@ Future<void> _pickImage() async {
                       },
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 14),
 
-                    Text(
+                    _sectionLabel(
+                      theme,
+                      Icons.notes_rounded,
                       'Post Description',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
                     ),
-                    const SizedBox(height: 10),
-
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: _bodyController,
                       minLines: 6,
                       maxLines: 10,
                       maxLength: 2000,
                       textCapitalization: TextCapitalization.sentences,
-                      decoration: InputDecoration(
-                        hintText: 'Write something you want to share...',
-                        alignLabelWithHint: true,
-                        filled: true,
-                        fillColor: colors.surfaceContainerHighest,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide(
-                            color: colors.primary,
-                            width: 1.5,
-                          ),
-                        ),
+                      decoration: _fieldDecoration(
+                        colors,
+                        hint: 'Write something you want to share...',
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -405,19 +408,20 @@ Future<void> _pickImage() async {
                       },
                     ),
 
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
 
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: colors.secondaryContainer,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
                             Icons.info_outline_rounded,
+                            size: 20,
                             color: colors.onSecondaryContainer,
                           ),
                           const SizedBox(width: 10),
@@ -439,8 +443,7 @@ Future<void> _pickImage() async {
                       width: double.infinity,
                       height: 54,
                       child: FilledButton.icon(
-                        onPressed:
-                            _isPublishing ? null : _publishPost,
+                        onPressed: _isPublishing ? null : _publishPost,
                         icon: _isPublishing
                             ? const SizedBox(
                                 width: 20,
@@ -451,13 +454,15 @@ Future<void> _pickImage() async {
                               )
                             : const Icon(Icons.send_rounded),
                         label: Text(
-                          _isPublishing
-                              ? 'Publishing...'
-                              : 'Publish Post',
+                          _isPublishing ? 'Publishing...' : 'Publish Post',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15.5,
+                          ),
                         ),
                         style: FilledButton.styleFrom(
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(18),
                           ),
                         ),
                       ),

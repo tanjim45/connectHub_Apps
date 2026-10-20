@@ -3,12 +3,12 @@ import 'package:connecthub/features/create_post_page.dart';
 import 'package:connecthub/features/explore_page.dart';
 import 'package:connecthub/features/post_search_bar.dart';
 import 'package:connecthub/features/profile_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:connecthub/models/post_model.dart';
 import 'package:connecthub/models/user_model.dart';
 import 'package:connecthub/service/post_service.dart';
 import 'package:connecthub/features/post_card.dart';
-
 
 class HomePage extends StatefulWidget {
   final bool isDarkMode;
@@ -32,8 +32,7 @@ class _HomePageState extends State<HomePage> {
 
   List<PostModel> apiPosts = [];
 
-  final TextEditingController searchController =
-      TextEditingController();
+  final TextEditingController searchController = TextEditingController();
 
   String searchQuery = '';
 
@@ -116,8 +115,7 @@ class _HomePageState extends State<HomePage> {
       );
 
       final photoById = <int, Map<String, dynamic>>{
-        for (final photo in photos)
-          photo['id'] as int: photo,
+        for (final photo in photos) photo['id'] as int: photo,
       };
 
       return posts.map((post) {
@@ -150,15 +148,9 @@ class _HomePageState extends State<HomePage> {
     });
 
     try {
-      final posts = await PostService.fetchPosts(
-        page: 1,
-        limit: pageSize,
-      );
+      final posts = await PostService.fetchPosts(page: 1, limit: pageSize);
 
-      final postsWithPhotos = await attachPhotos(
-        posts,
-        page: 1,
-      );
+      final postsWithPhotos = await attachPhotos(posts, page: 1);
 
       if (!mounted) return;
 
@@ -172,18 +164,14 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
 
       setState(() {
-        errorMessage =
-            'Posts could not load. Check your internet.';
+        errorMessage = 'Posts could not load. Check your internet.';
         isLoading = false;
       });
     }
   }
 
   Future<void> loadMorePosts() async {
-    if (isLoading ||
-        isLoadingMore ||
-        !hasMore ||
-        loadMoreError != null) {
+    if (isLoading || isLoadingMore || !hasMore || loadMoreError != null) {
       return;
     }
 
@@ -199,16 +187,12 @@ class _HomePageState extends State<HomePage> {
         limit: pageSize,
       );
 
-      final newPostsWithPhotos = await attachPhotos(
-        newPosts,
-        page: nextPage,
-      );
+      final newPostsWithPhotos = await attachPhotos(newPosts, page: nextPage);
 
       if (!mounted) return;
 
       setState(() {
-        final existingIds =
-            apiPosts.map((post) => post.id).toSet();
+        final existingIds = apiPosts.map((post) => post.id).toSet();
 
         final uniquePosts = newPostsWithPhotos
             .where((post) => !existingIds.contains(post.id))
@@ -257,8 +241,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       if (likedPostIds.contains(post.id)) {
         likedPostIds.remove(post.id);
-        likeCounts[post.id] =
-            ((likeCounts[post.id] ?? 1) - 1).clamp(0, 999999);
+        likeCounts[post.id] = ((likeCounts[post.id] ?? 1) - 1).clamp(0, 999999);
       } else {
         likedPostIds.add(post.id);
         likeCounts[post.id] = (likeCounts[post.id] ?? 0) + 1;
@@ -284,24 +267,26 @@ class _HomePageState extends State<HomePage> {
     FocusScope.of(context).unfocus();
   }
 
- 
-Widget _buildPostCard(PostModel post) {
-  return PostCard(
-    post: post,
-    localImageBytes: post.localImageBytes,
-    isLiked: likedPostIds.contains(post.id),
-    likeCount: likeCounts[post.id] ?? 0,
-    comments: postComments[post.id] ?? [],
-    commentController: commentControllers.putIfAbsent(
-      post.id,
-      () => TextEditingController(),
-    ),
-    getUser: getUser,
-    onLike: () => toggleLike(post),
-    onAddComment: () => addComment(post),
-  );
-}
+  Widget _buildPostCard(PostModel post) {
+    return PostCard(
+      post: post,
+      localImageBytes: post.localImageBytes,
+      isLiked: likedPostIds.contains(post.id),
+      likeCount: likeCounts[post.id] ?? 0,
+      comments: postComments[post.id] ?? [],
+      commentController: commentControllers.putIfAbsent(
+        post.id,
+        () => TextEditingController(),
+      ),
+      getUser: getUser,
+      onLike: () => toggleLike(post),
+      onAddComment: () => addComment(post),
+    );
+  }
 
+  // ------------------------------------------------------------
+  // Loading skeleton (pulsing)
+  // ------------------------------------------------------------
 
   Widget _buildLoadingState() {
     final colors = Theme.of(context).colorScheme;
@@ -311,84 +296,96 @@ Widget _buildPostCard(PostModel post) {
       padding: const EdgeInsets.all(20),
       itemCount: 3,
       itemBuilder: (context, index) {
-        return Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: colors.outlineVariant),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _skeletonBox(46, 46, radius: 50),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 680),
+            child: _Pulse(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: colors.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        _skeletonBox(150, 12),
-                        const SizedBox(height: 8),
-                        _skeletonBox(90, 10),
+                        _skeletonBox(46, 46, radius: 50),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _skeletonBox(150, 12),
+                              const SizedBox(height: 8),
+                              _skeletonBox(90, 10),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 18),
+                    _skeletonBox(double.infinity, 220, radius: 16),
+                    const SizedBox(height: 16),
+                    _skeletonBox(220, 13),
+                    const SizedBox(height: 9),
+                    _skeletonBox(170, 13),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        _skeletonBox(65, 28, radius: 10),
+                        const SizedBox(width: 16),
+                        _skeletonBox(75, 28, radius: 10),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 18),
-              _skeletonBox(double.infinity, 220, radius: 14),
-              const SizedBox(height: 16),
-              _skeletonBox(220, 13),
-              const SizedBox(height: 9),
-              _skeletonBox(170, 13),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  _skeletonBox(65, 28, radius: 8),
-                  const SizedBox(width: 16),
-                  _skeletonBox(75, 28, radius: 8),
-                ],
-              ),
-            ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _skeletonBox(
-    double width,
-    double height, {
-    double radius = 6,
-  }) {
+  Widget _skeletonBox(double width, double height, {double radius = 6}) {
     return Container(
       width: width.isInfinite ? null : width,
       height: height,
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHighest,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
   }
 
+  Widget _buildSearchHeader() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 680),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+          child: PostSearchBar(
+            controller: searchController,
+            onChanged: (value) {
+              setState(() => searchQuery = value);
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildHomeContent() {
+    final colors = Theme.of(context).colorScheme;
+
     if (isLoading) {
       return Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: PostSearchBar(
-              controller: searchController,
-              onChanged: (value) {
-                setState(() => searchQuery = value);
-              },
-            ),
-          ),
+          _buildSearchHeader(),
           Expanded(
             child: RefreshIndicator(
               onRefresh: loadPosts,
@@ -406,11 +403,22 @@ Widget _buildPostCard(PostModel post) {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off_rounded, size: 52),
-              const SizedBox(height: 14),
-              Text(errorMessage!),
-              const SizedBox(height: 14),
-              ElevatedButton.icon(
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.cloud_off_rounded,
+                  size: 42,
+                  color: colors.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(errorMessage!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton.icon(
                 onPressed: loadPosts,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Try Again'),
@@ -423,15 +431,7 @@ Widget _buildPostCard(PostModel post) {
 
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-          child: PostSearchBar(
-            controller: searchController,
-            onChanged: (value) {
-              setState(() => searchQuery = value);
-            },
-          ),
-        ),
+        _buildSearchHeader(),
         Expanded(
           child: RefreshIndicator(
             onRefresh: loadPosts,
@@ -446,19 +446,29 @@ Widget _buildPostCard(PostModel post) {
                     padding: const EdgeInsets.all(32),
                     children: [
                       const SizedBox(height: 70),
-                      Icon(
-                        searching
-                            ? Icons.search_off_rounded
-                            : Icons.dynamic_feed_outlined,
-                        size: 56,
-                        color: Theme.of(context).colorScheme.primary,
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(22),
+                          decoration: BoxDecoration(
+                            color: colors.primaryContainer,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            searching
+                                ? Icons.search_off_rounded
+                                : Icons.dynamic_feed_outlined,
+                            size: 42,
+                            color: colors.onPrimaryContainer,
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       Center(
                         child: Text(
                           searching
                               ? 'No matching posts found.'
                               : 'No posts found.',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -466,16 +476,14 @@ Widget _buildPostCard(PostModel post) {
                 }
 
                 final showFooter = !searching &&
-                    (isLoadingMore ||
-                        loadMoreError != null ||
-                        !hasMore);
+                    (isLoadingMore || loadMoreError != null || !hasMore);
 
                 return ListView.builder(
                   controller: _scrollController,
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
-                    vertical: 24,
+                    vertical: 20,
                   ),
                   itemCount: posts.length + (showFooter ? 1 : 0),
                   itemBuilder: (context, index) {
@@ -483,9 +491,7 @@ Widget _buildPostCard(PostModel post) {
                       if (isLoadingMore) {
                         return const Padding(
                           padding: EdgeInsets.all(24),
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
+                          child: Center(child: CircularProgressIndicator()),
                         );
                       }
 
@@ -497,7 +503,7 @@ Widget _buildPostCard(PostModel post) {
                               children: [
                                 Text(loadMoreError!),
                                 const SizedBox(height: 8),
-                                ElevatedButton(
+                                FilledButton.tonal(
                                   onPressed: () {
                                     setState(() {
                                       loadMoreError = null;
@@ -513,10 +519,20 @@ Widget _buildPostCard(PostModel post) {
                       }
 
                       if (!hasMore) {
-                        return const Padding(
-                          padding: EdgeInsets.all(24),
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
                           child: Center(
-                            child: Text('🎉 You have seen all posts!'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colors.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: const Text('🎉 You have seen all posts!'),
+                            ),
                           ),
                         );
                       }
@@ -541,114 +557,58 @@ Widget _buildPostCard(PostModel post) {
     );
   }
 
-Widget _buildSelectedPage() {
-  if (selectedIndex == 0) {
-    return _buildHomeContent();
-  }
+  Widget _buildSelectedPage() {
+    switch (selectedIndex) {
+      case 0:
+        return _buildHomeContent();
+      case 1:
+        return const ExplorePage();
+      case 2:
+        return CreatePostPage(
+          onPostCreated: (post) {
+            setState(() {
+              apiPosts.insert(0, post);
+              selectedIndex = 0;
+            });
 
-  if (selectedIndex == 1) {
-    return const ExplorePage();
-  }
-    if (selectedIndex == 2) {
-    return CreatePostPage(
-      onPostCreated: (post) {
-        setState(() {
-          apiPosts.insert(0, post);
-        });
-
-        setState(() {
-          selectedIndex = 0;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('new post  is added to Home feed!'),
-          ),
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('new post  is added to Home feed!'),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          },
         );
-      },
-    );
+      case 3:
+        return const ChatPage();
+      default:
+        return const ProfilePage();
+    }
+  }
 
-  }if (selectedIndex == 3) {
-  return const ChatPage();
-}
-if (selectedIndex == 4) {
-  return const ProfilePage();
-}
-  final descriptions = [
-    '',
-    '',
-    'Create Post feature coming soon.',
-    'Chat feature coming soon.',
-    'Profile feature coming soon.',
-  ];
+  // ------------------------------------------------------------
+  // Navigation (sidebar / drawer)
+  // ------------------------------------------------------------
 
-  final icons = [
-    Icons.home_rounded,
-    Icons.explore_rounded,
-    Icons.add_box_rounded,
-    Icons.chat_bubble_rounded,
-    Icons.person_rounded,
-  ];
-
-  return Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            icons[selectedIndex],
-            size: 42,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          pageTitles[selectedIndex],
-          style: Theme.of(context)
-              .textTheme
-              .headlineSmall
-              ?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text(descriptions[selectedIndex]),
-      ],
-    ),
-  );
-}
-  Widget _buildNavigationItem(
-    int index,
-    IconData icon,
-    String label,
-  ) {
+  Widget _buildNavigationItem(int index, IconData icon, String label) {
+    final colors = Theme.of(context).colorScheme;
     final selected = selectedIndex == index;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 3,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       child: ListTile(
-        leading: Icon(
-          icon,
-          color: selected
-              ? Theme.of(context).colorScheme.primary
-              : null,
-        ),
+        leading: Icon(icon, color: selected ? colors.primary : null),
         title: Text(
           label,
           style: TextStyle(
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+            color: selected ? colors.primary : null,
           ),
         ),
         selected: selected,
-        selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
+        selectedTileColor: colors.primaryContainer,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
         ),
         onTap: () {
           setState(() => selectedIndex = index);
@@ -662,31 +622,83 @@ if (selectedIndex == 4) {
   }
 
   Widget _buildNavigationMenu() {
+    final colors = Theme.of(context).colorScheme;
+    final user = FirebaseAuth.instance.currentUser;
+    final displayName = (user?.displayName ?? '').trim().isNotEmpty
+        ? user!.displayName!.trim()
+        : 'ConnectHub User';
+
     return SafeArea(
       child: Column(
         children: [
-          const SizedBox(height: 12),
+          // Brand
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            padding: EdgeInsets.fromLTRB(22, 22, 18, 10),
             child: Row(
               children: [
-                Icon(
-                  Icons.hub_rounded,
-                  color: Color(0xFF2684FF),
-                  size: 34,
-                ),
+                Icon(Icons.hub_rounded, color: Color(0xFF2684FF), size: 34),
                 SizedBox(width: 10),
                 Text(
                   'ConnectHub',
                   style: TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 20),
+
+          // User chip
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.primaryContainer.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: colors.primary,
+                    child: Text(
+                      displayName[0].toUpperCase(),
+                      style: TextStyle(
+                        color: colors.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        if (user?.email != null)
+                          Text(
+                            user!.email!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: colors.onSurfaceVariant),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           _buildNavigationItem(0, Icons.home_rounded, 'Home'),
           _buildNavigationItem(1, Icons.explore_rounded, 'Explore'),
           _buildNavigationItem(2, Icons.add_box_rounded, 'Create Post'),
@@ -699,12 +711,66 @@ if (selectedIndex == 4) {
               title: const Text('Dark Mode'),
               secondary: const Icon(Icons.dark_mode_outlined),
               value: widget.isDarkMode,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               onChanged: widget.onThemeChanged,
             ),
           ),
           const SizedBox(height: 12),
         ],
       ),
+    );
+  }
+
+  // ------------------------------------------------------------
+  // App bar
+  // ------------------------------------------------------------
+
+  PreferredSizeWidget _buildAppBar({required bool showThemeToggle}) {
+    final colors = Theme.of(context).colorScheme;
+
+    return AppBar(
+      titleSpacing: 20,
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (selectedIndex == 0) ...[
+            Icon(Icons.hub_rounded, color: colors.primary, size: 28),
+            const SizedBox(width: 8),
+          ],
+          Text(
+            selectedIndex == 0 ? 'ConnectHub' : pageTitles[selectedIndex],
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        IconButton(
+          tooltip: 'Notifications',
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Notifications coming soon!')),
+            );
+          },
+          icon: const Icon(Icons.notifications_outlined),
+        ),
+        if (showThemeToggle)
+          IconButton(
+            tooltip: 'Toggle theme',
+            onPressed: () {
+              widget.onThemeChanged(!widget.isDarkMode);
+            },
+            icon: Icon(
+              widget.isDarkMode ? Icons.light_mode : Icons.dark_mode,
+            ),
+          ),
+        const SizedBox(width: 8),
+      ],
     );
   }
 
@@ -723,31 +789,7 @@ if (selectedIndex == 4) {
                 Expanded(
                   child: Column(
                     children: [
-                      AppBar(
-                        title: Text(
-                          selectedIndex == 0
-                              ? 'ConnectHub'
-                              : pageTitles[selectedIndex],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 22,
-                          ),
-                        ),
-                        actions: [
-                          IconButton(
-                            tooltip: 'Notifications',
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Notifications coming soon!'),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.notifications_outlined),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                      ),
+                      _buildAppBar(showThemeToggle: false),
                       Expanded(child: _buildSelectedPage()),
                     ],
                   ),
@@ -759,56 +801,14 @@ if (selectedIndex == 4) {
 
         if (width >= 600) {
           return Scaffold(
-            appBar: AppBar(
-              title: Text(
-                selectedIndex == 0
-                    ? 'ConnectHub'
-                    : pageTitles[selectedIndex],
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 22,
-                ),
-              ),
-              actions: [
-                IconButton(
-                  tooltip: 'Toggle theme',
-                  onPressed: () {
-                    widget.onThemeChanged(!widget.isDarkMode);
-                  },
-                  icon: Icon(
-                    widget.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-                  ),
-                ),
-              ],
-            ),
+            appBar: _buildAppBar(showThemeToggle: true),
             drawer: Drawer(child: _buildNavigationMenu()),
             body: _buildSelectedPage(),
           );
         }
 
         return Scaffold(
-          appBar: AppBar(
-            title: Text(
-                selectedIndex == 0
-                    ? 'ConnectHub'
-                    : pageTitles[selectedIndex],
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 22,
-                ),
-              ),
-            actions: [
-              IconButton(
-                tooltip: 'Toggle theme',
-                onPressed: () {
-                  widget.onThemeChanged(!widget.isDarkMode);
-                },
-                icon: Icon(
-                  widget.isDarkMode ? Icons.light_mode : Icons.dark_mode,
-                ),
-              ),
-            ],
-          ),
+          appBar: _buildAppBar(showThemeToggle: true),
           body: _buildSelectedPage(),
           bottomNavigationBar: NavigationBar(
             selectedIndex: selectedIndex,
@@ -846,5 +846,36 @@ if (selectedIndex == 4) {
         );
       },
     );
+  }
+}
+
+// Gently pulsing opacity used for skeleton loading cards.
+class _Pulse extends StatefulWidget {
+  final Widget child;
+
+  const _Pulse({required this.child});
+
+  @override
+  State<_Pulse> createState() => _PulseState();
+}
+
+class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _opacity = Tween<double>(begin: 0.45, end: 1)
+      .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(opacity: _opacity, child: widget.child);
   }
 }

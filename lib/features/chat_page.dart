@@ -1,5 +1,10 @@
-import 'package:connecthub/features/conversation_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connecthub/service/chat_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../models/chat_user.dart';
+import 'conversation_page.dart';
+import 'find_users_page.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -9,51 +14,8 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final TextEditingController _searchController =
-      TextEditingController();
-
-  final List<Map<String, dynamic>> conversations = [
-    {
-      'name': 'Alex Morgan',
-      'message': 'Hey! How are you?',
-      'time': '10:30 AM',
-      'unread': 2,
-      'color': Colors.blue,
-    },
-    {
-      'name': 'Sarah Ahmed',
-      'message': 'See you tomorrow!',
-      'time': '9:45 AM',
-      'unread': 0,
-      'color': Colors.purple,
-    },
-    {
-      'name': 'Rahim Hasan',
-      'message': 'Thanks for sharing!',
-      'time': 'Yesterday',
-      'unread': 1,
-      'color': Colors.teal,
-    },
-    {
-      'name': 'Nusrat Jahan',
-      'message': 'That looks amazing 😍',
-      'time': 'Yesterday',
-      'unread': 0,
-      'color': Colors.orange,
-    },
-  ];
-
-  String searchQuery = '';
-
-  List<Map<String, dynamic>> get filteredConversations {
-    return conversations.where((chat) {
-      final name = (chat['name'] as String).toLowerCase();
-      final message = (chat['message'] as String).toLowerCase();
-      final query = searchQuery.toLowerCase();
-
-      return name.contains(query) || message.contains(query);
-    }).toList();
-  }
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void dispose() {
@@ -61,204 +23,344 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
+  String _formatTime(dynamic value) {
+    if (value is! Timestamp) return '';
+
+    final date = value.toDate().toLocal();
+    final now = DateTime.now();
+
+    if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day) {
+      final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
+      final minute = date.minute.toString().padLeft(2, '0');
+      return '$hour:$minute ${date.hour >= 12 ? 'PM' : 'AM'}';
+    }
+
+    if (now.difference(date).inDays == 1) return 'Yesterday';
+
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  void _openFindUsers() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const FindUsersPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final chats = filteredConversations;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (uid == null) {
+      return const Center(child: Text('Please log in to view messages.'));
+    }
 
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 850),
         child: Column(
           children: [
+            // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      'Messages',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Messages',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Chat with people you connect with',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   IconButton.filledTonal(
                     tooltip: 'New message',
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'New message feature coming next!',
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: _openFindUsers,
                     icon: const Icon(Icons.edit_square),
                   ),
                 ],
               ),
             ),
 
+            // Search
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
                 controller: _searchController,
                 onChanged: (value) {
-                  setState(() {
-                    searchQuery = value.trim();
-                  });
+                  setState(() => _searchQuery = value.trim().toLowerCase());
                 },
                 decoration: InputDecoration(
                   hintText: 'Search conversations...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: searchQuery.isNotEmpty
-                      ? IconButton(
-                          tooltip: 'Clear search',
-                          icon: const Icon(Icons.close),
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchQuery.isEmpty
+                      ? null
+                      : IconButton(
                           onPressed: () {
                             _searchController.clear();
-                            setState(() {
-                              searchQuery = '';
-                            });
+                            setState(() => _searchQuery = '');
                           },
-                        )
-                      : null,
+                          icon: const Icon(Icons.close_rounded),
+                        ),
                   filled: true,
                   fillColor: colors.surfaceContainerHighest,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
                     borderSide: BorderSide.none,
                   ),
                 ),
               ),
             ),
-
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             Expanded(
-              child: chats.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.chat_bubble_outline,
-                            size: 48,
-                            color: colors.onSurfaceVariant,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No conversations found',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                      itemCount: chats.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 6),
-                      itemBuilder: (context, index) {
-                        final chat = chats[index];
-                        final name = chat['name'] as String;
-                        final message = chat['message'] as String;
-                        final time = chat['time'] as String;
-                        final unread = chat['unread'] as int;
-                        final color = chat['color'] as Color;
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: ChatService.instance.getChatsStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return const Center(
+                      child: Text('Could not load conversations.'),
+                    );
+                  }
 
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          leading: CircleAvatar(
-                            radius: 27,
-                            backgroundColor:
-                                color.withValues(alpha: 0.15),
-                            child: Text(
-                              name[0],
-                              style: TextStyle(
-                                color: color,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final docs = snapshot.data!.docs.toList();
+
+                  docs.sort((a, b) {
+                    final aTime = a.data()['lastMessageAt'];
+                    final bTime = b.data()['lastMessageAt'];
+
+                    final aMillis = aTime is Timestamp
+                        ? aTime.millisecondsSinceEpoch
+                        : 0;
+                    final bMillis = bTime is Timestamp
+                        ? bTime.millisecondsSinceEpoch
+                        : 0;
+
+                    return bMillis.compareTo(aMillis);
+                  });
+
+                  if (docs.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(22),
+                              decoration: BoxDecoration(
+                                color: colors.primaryContainer,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.forum_outlined,
+                                size: 44,
+                                color: colors.onPrimaryContainer,
                               ),
                             ),
-                          ),
-                          title: Text(
-                            name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
+                            const SizedBox(height: 18),
+                            Text(
+                              'No conversations yet',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 5),
-                            child: Text(
-                              message,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            const SizedBox(height: 8),
+                            Text(
+                              'Find people and send your first message.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: colors.onSurfaceVariant),
                             ),
-                          ),
-                          trailing: SizedBox(
-                            width: 82,
-                            height: 44,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  time,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style:
-                                      theme.textTheme.labelSmall?.copyWith(
-                                    color: colors.onSurfaceVariant,
+                            const SizedBox(height: 18),
+                            FilledButton.icon(
+                              onPressed: _openFindUsers,
+                              icon: const Icon(Icons.person_search),
+                              label: const Text('Find people'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                    itemCount: docs.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data();
+                      final participants = List<String>.from(
+                        data['participants'] ?? const [],
+                      );
+
+                      final otherUids = participants
+                          .where((participant) => participant != uid)
+                          .toList();
+
+                      if (otherUids.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final otherUid = otherUids.first;
+
+                      return StreamBuilder<
+                          DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: ChatService.instance.getUserStream(otherUid),
+                        builder: (context, userSnapshot) {
+                          if (!userSnapshot.hasData ||
+                              !userSnapshot.data!.exists) {
+                            return const SizedBox.shrink();
+                          }
+
+                          final otherUser = ChatUser.fromMap(
+                            userSnapshot.data!.id,
+                            userSnapshot.data!.data()!,
+                          );
+
+                          final lastMessage =
+                              data['lastMessage'] as String? ?? '';
+
+                          if (_searchQuery.isNotEmpty &&
+                              !otherUser.name.toLowerCase().contains(
+                                    _searchQuery,
+                                  ) &&
+                              !otherUser.email.toLowerCase().contains(
+                                    _searchQuery,
+                                  ) &&
+                              !lastMessage.toLowerCase().contains(
+                                    _searchQuery,
+                                  )) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return Material(
+                            color: colors.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => ConversationPage(
+                                      chatId: doc.id,
+                                      otherUser: otherUser,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: colors.outlineVariant,
                                   ),
                                 ),
-                                const SizedBox(height: 5),
-                                if (unread > 0)
-                                  Container(
-                                    constraints: const BoxConstraints(
-                                      minWidth: 20,
-                                      minHeight: 20,
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 27,
+                                      backgroundColor:
+                                          colors.primaryContainer,
+                                      backgroundImage:
+                                          otherUser.photoUrl.isNotEmpty
+                                              ? NetworkImage(
+                                                  otherUser.photoUrl,
+                                                )
+                                              : null,
+                                      child: otherUser.photoUrl.isEmpty
+                                          ? Text(
+                                              otherUser.name.isNotEmpty
+                                                  ? otherUser.name[0]
+                                                      .toUpperCase()
+                                                  : '?',
+                                              style: TextStyle(
+                                                color: colors.primary,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 20,
+                                              ),
+                                            )
+                                          : null,
                                     ),
-                                    alignment: Alignment.center,
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: colors.primary,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Text(
-                                      '$unread',
-                                      style: TextStyle(
-                                        color: colors.onPrimary,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            otherUser.name,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 15.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            lastMessage.isEmpty
+                                                ? 'Start a conversation'
+                                                : '${data['lastSenderId'] == uid ? 'You: ' : ''}$lastMessage',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: theme.textTheme.bodyMedium
+                                                ?.copyWith(
+                                              color:
+                                                  colors.onSurfaceVariant,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ConversationPage(
-                                userName: name,
-                                avatarColor: color,
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _formatTime(data['lastMessageAt']),
+                                      style:
+                                          theme.textTheme.labelSmall?.copyWith(
+                                        color: colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );
                         },
-                        );
-                      },
-                    ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
           ],
         ),

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:connecthub/models/post_model.dart';
 import 'package:connecthub/models/user_model.dart';
@@ -12,8 +11,7 @@ class ExplorePage extends StatefulWidget {
 }
 
 class _ExplorePageState extends State<ExplorePage> {
-  final TextEditingController _searchController =
-      TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
 
   List<PostModel> _posts = [];
 
@@ -67,10 +65,7 @@ class _ExplorePageState extends State<ExplorePage> {
     });
 
     try {
-      final posts = await PostService.fetchPosts(
-        page: 1,
-        limit: 30,
-      );
+      final posts = await PostService.fetchPosts(page: 1, limit: 30);
 
       if (!mounted) return;
 
@@ -83,13 +78,13 @@ class _ExplorePageState extends State<ExplorePage> {
 
       setState(() {
         _errorMessage =
-            'Posts load করা যায়নি। Internet connection পরীক্ষা করো।';
+            'Posts load করা যায়নি। Internet connection পরীক্ষা করো।';
         _isLoading = false;
       });
     }
   }
 
-  // Search অনুযায়ী posts filter করা
+  // Search অনুযায়ী posts filter করা
   List<PostModel> get _filteredPosts {
     final query = _searchQuery.trim().toLowerCase();
 
@@ -103,19 +98,18 @@ class _ExplorePageState extends State<ExplorePage> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final posts = _filteredPosts;
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
           child: TextField(
             controller: _searchController,
             onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
+              setState(() => _searchQuery = value);
             },
             decoration: InputDecoration(
               hintText: 'Explore posts...',
@@ -125,37 +119,275 @@ class _ExplorePageState extends State<ExplorePage> {
                       tooltip: 'Clear search',
                       onPressed: () {
                         _searchController.clear();
-                        setState(() {
-                          _searchQuery = '';
-                        });
+                        setState(() => _searchQuery = '');
                       },
                       icon: const Icon(Icons.close_rounded),
                     )
                   : null,
               filled: true,
               fillColor: colors.surfaceContainerHighest,
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
               border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(18),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
                 borderSide: BorderSide.none,
               ),
             ),
           ),
         ),
-        Expanded(
-          child: _buildContent(posts, colors),
-        ),
+        Expanded(child: _buildContent(posts, colors)),
       ],
     );
   }
 
-  Widget _buildContent(
-    List<PostModel> posts,
-    ColorScheme colors,
-  ) {
+  void _showPostSheet(PostModel post, ColorScheme colors) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(22, 8, 22, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                FutureBuilder<UserModel>(
+                  future: _getUser(post.userId),
+                  builder: (context, snapshot) {
+                    final user = snapshot.data;
+
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        radius: 24,
+                        backgroundColor: colors.primaryContainer,
+                        child: Text(
+                          user != null && user.name.isNotEmpty
+                              ? user.name[0].toUpperCase()
+                              : '?',
+                          style: TextStyle(
+                            color: colors.onPrimaryContainer,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        user?.name ?? 'Loading user...',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      subtitle: user != null ? Text('@${user.username}') : null,
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  post.title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        height: 1.3,
+                      ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  post.body,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.copyWith(height: 1.6),
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    'Post #${post.id}',
+                    style: TextStyle(
+                      color: colors.onPrimaryContainer,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPostCard(PostModel post, ColorScheme colors) {
+    final theme = Theme.of(context);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 0,
+      color: colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(color: colors.outlineVariant),
+      ),
+      child: InkWell(
+        onTap: () => _showPostSheet(post, colors),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Author
+              FutureBuilder<UserModel>(
+                future: _getUser(post.userId),
+                builder: (context, snapshot) {
+                  final user = snapshot.data;
+
+                  return Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: colors.primaryContainer,
+                        child: user == null
+                            ? Icon(
+                                Icons.person_outline_rounded,
+                                color: colors.onPrimaryContainer,
+                              )
+                            : Text(
+                                user.name.isNotEmpty
+                                    ? user.name[0].toUpperCase()
+                                    : '?',
+                                style: TextStyle(
+                                  color: colors.onPrimaryContainer,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user?.name ?? 'Loading user...',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            if (user != null)
+                              Text(
+                                '@${user.username}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 14),
+
+              // Title
+              Text(
+                post.title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  height: 1.3,
+                  letterSpacing: -0.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Body
+              Expanded(
+                child: Text(
+                  post.body,
+                  maxLines: 5,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: colors.onSurfaceVariant,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Footer
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.explore_outlined,
+                          size: 15,
+                          color: colors.onPrimaryContainer,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Explore',
+                          style: TextStyle(
+                            color: colors.onPrimaryContainer,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '#${post.id}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    Icons.arrow_outward_rounded,
+                    size: 16,
+                    color: colors.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(List<PostModel> posts, ColorScheme colors) {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_errorMessage != null) {
@@ -165,16 +397,21 @@ class _ExplorePageState extends State<ExplorePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.cloud_off_rounded,
-                size: 48,
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.cloud_off_rounded,
+                  size: 40,
+                  color: colors.onPrimaryContainer,
+                ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+              Text(_errorMessage!, textAlign: TextAlign.center),
+              const SizedBox(height: 14),
               FilledButton.icon(
                 onPressed: _loadPosts,
                 icon: const Icon(Icons.refresh),
@@ -187,8 +424,15 @@ class _ExplorePageState extends State<ExplorePage> {
     }
 
     if (posts.isEmpty) {
-      return const Center(
-        child: Text('কোনো matching post পাওয়া যায়নি।'),
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off_rounded, size: 52, color: colors.primary),
+            const SizedBox(height: 12),
+            const Text('কোনো matching post পাওয়া যায়নি।'),
+          ],
+        ),
       );
     }
 
@@ -210,230 +454,14 @@ class _ExplorePageState extends State<ExplorePage> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             itemCount: posts.length,
-            gridDelegate:
-                SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,
               crossAxisSpacing: 14,
               mainAxisSpacing: 14,
               childAspectRatio: columns == 1 ? 1.35 : 0.85,
             ),
-            itemBuilder: (context, index) {
-              final post = posts[index];
-
-              return Card(
-                clipBehavior: Clip.antiAlias,
-                elevation: 0,
-                color: colors.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  side: BorderSide(
-                    color: colors.outlineVariant,
-                  ),
-                ),
-                child: InkWell(
-                  onTap: () {
-                    showModalBottomSheet<void>(
-                      context: context,
-                      isScrollControlled: true,
-                      showDragHandle: true,
-                      builder: (sheetContext) {
-                        return SafeArea(
-                          child: SingleChildScrollView(
-                            padding: const EdgeInsets.fromLTRB(
-                              20, 8, 20, 32,
-                            ),
-                            child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
-                              children: [
-                                FutureBuilder<UserModel>(
-                                  future: _getUser(post.userId),
-                                  builder: (context, snapshot) {
-                                    final user = snapshot.data;
-
-                                    return ListTile(
-                                      contentPadding: EdgeInsets.zero,
-                                      leading: CircleAvatar(
-                                        backgroundColor:
-                                            colors.primaryContainer,
-                                        child: Text(
-                                          user != null &&
-                                                  user.name.isNotEmpty
-                                              ? user.name[0].toUpperCase()
-                                              : '?',
-                                          style: TextStyle(
-                                            color: colors
-                                                .onPrimaryContainer,
-                                          ),
-                                        ),
-                                      ),
-                                      title: Text(
-                                        user?.name ?? 'Loading user...',
-                                      ),
-                                      subtitle: user != null
-                                          ? Text('@${user.username}')
-                                          : null,
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  post.title,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                                const SizedBox(height: 16),
-                                Text(post.body),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Post #${post.id}',
-                                  style: TextStyle(
-                                    color: colors.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        // Post author's name and avatar
-                        Row(
-                          children: [
-                            FutureBuilder<UserModel>(
-                              future: _getUser(post.userId),
-                              builder: (context, snapshot) {
-                                final user = snapshot.data;
-
-                                return CircleAvatar(
-                                  radius: 20,
-                                  backgroundColor:
-                                      colors.primaryContainer,
-                                  child: user == null
-                                      ? Icon(
-                                          Icons.person_outline_rounded,
-                                          color:
-                                              colors.onPrimaryContainer,
-                                        )
-                                      : Text(
-                                          user.name.isNotEmpty
-                                              ? user.name[0]
-                                                  .toUpperCase()
-                                              : '?',
-                                          style: TextStyle(
-                                            color: colors
-                                                .onPrimaryContainer,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                );
-                              },
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: FutureBuilder<UserModel>(
-                                future: _getUser(post.userId),
-                                builder: (context, snapshot) {
-                                  final user = snapshot.data;
-
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        user?.name ??
-                                            'Loading user...',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      if (user != null)
-                                        Text(
-                                          '@${user.username}',
-                                          maxLines: 1,
-                                          overflow:
-                                              TextOverflow.ellipsis,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall,
-                                        ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                            Icon(
-                              Icons.open_in_new_rounded,
-                              size: 18,
-                              color: colors.onSurfaceVariant,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Post title
-                        Text(
-                          post.title,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Post body
-                        Expanded(
-                          child: Text(
-                            post.body,
-                            maxLines: 5,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: colors.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.explore_outlined,
-                              size: 18,
-                              color: colors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Explore',
-                              style: TextStyle(
-                                color: colors.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
+            itemBuilder: (context, index) =>
+                _buildPostCard(posts[index], colors),
           ),
         );
       },

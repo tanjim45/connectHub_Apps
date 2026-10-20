@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:connecthub/models/user_model.dart';
 
@@ -11,6 +10,29 @@ class UserInfo extends StatelessWidget {
     required this.userId,
     required this.getUser,
   });
+
+  // Gradient ring around the avatar.
+  Widget _ring(ColorScheme colors, Widget child) {
+    return Container(
+      padding: const EdgeInsets.all(2.5),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colors.primary, colors.tertiary],
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: colors.surface,
+        ),
+        child: child,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +47,7 @@ class UserInfo extends StatelessWidget {
 
         if (!snapshot.hasData) {
           return Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               CircleAvatar(
                 radius: 23,
@@ -32,61 +55,58 @@ class UserInfo extends StatelessWidget {
                 child: const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                  ),
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               ),
               const SizedBox(width: 12),
-              const Text('Loading profile...'),
+              Text(
+                'Loading profile...',
+                style: TextStyle(color: colors.onSurfaceVariant),
+              ),
             ],
           );
         }
 
         final user = snapshot.data!;
-        final photoUrl =
-            'https://i.pravatar.cc/150?img=${(user.id % 70) + 1}';
+        final photoUrl = 'https://i.pravatar.cc/150?img=${(user.id % 70) + 1}';
 
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 25,
-              backgroundColor: colors.primaryContainer,
-              child: ClipOval(
-                child: Image.network(
-                  photoUrl,
-                  width: 50,
-                  height: 50,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
+            _ring(
+              colors,
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: colors.primaryContainer,
+                child: ClipOval(
+                  child: Image.network(
+                    photoUrl,
+                    width: 44,
+                    height: 44,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
 
-                    return CircleAvatar(
-                      radius: 25,
-                      backgroundColor: colors.primaryContainer,
-                      child: Text(
-                        user.name.isNotEmpty
-                            ? user.name[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          color: colors.primary,
-                          fontWeight: FontWeight.bold,
+                      return Center(
+                        child: Text(
+                          user.name.isNotEmpty
+                              ? user.name[0].toUpperCase()
+                              : '?',
+                          style: TextStyle(
+                            color: colors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return CircleAvatar(
-                      radius: 25,
-                      backgroundColor: colors.primaryContainer,
-                      child: Icon(
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
                         Icons.person,
                         color: colors.primary,
-                        size: 28,
-                      ),
-                    );
-                  },
+                        size: 26,
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -103,9 +123,10 @@ class UserInfo extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Text(
                     '@${user.username}',
                     maxLines: 1,
@@ -126,17 +147,18 @@ class UserInfo extends StatelessWidget {
 
   Widget _buildFallback(ColorScheme colors) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         CircleAvatar(
           radius: 23,
           backgroundColor: colors.primaryContainer,
-          child: Icon(
-            Icons.person,
-            color: colors.primary,
-          ),
+          child: Icon(Icons.person, color: colors.primary),
         ),
         const SizedBox(width: 12),
-        const Text('Unknown user'),
+        const Text(
+          'Unknown user',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
       ],
     );
   }

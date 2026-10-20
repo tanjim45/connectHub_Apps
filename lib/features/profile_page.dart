@@ -41,30 +41,21 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-
-    // Profile page খোলার সময় Firebase থেকে তথ্য আনবে।
     _loadProfile();
   }
 
-  // ============================================================
-  // FIRESTORE DOCUMENT REFERENCE
   // প্রতিটি user-এর document হবে users/{নিজের UID}
-  // ============================================================
-
   DocumentReference<Map<String, dynamic>> _profileReference(String uid) {
     return FirebaseFirestore.instance.collection('users').doc(uid);
   }
 
   // ============================================================
   // LOAD PROFILE
-  // কাজ: Firebase Auth থেকে user নেওয়া এবং Firestore থেকে
-  // তাঁর Profile Name, Nickname, Bio ও Photo URL load করা।
   // ============================================================
 
   Future<void> _loadProfile() async {
     final user = FirebaseAuth.instance.currentUser;
 
-    // Login করা user না থাকলে error দেখাবে।
     if (user == null) {
       if (!mounted) return;
 
@@ -79,12 +70,10 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final reference = _profileReference(user.uid);
 
-      // Firestore থেকে নিজের profile document পড়া।
       final snapshot = await reference.get();
 
       final data = snapshot.data() ?? <String, dynamic>{};
 
-      // Firestore-এ নাম না থাকলে Firebase Auth-এর নাম ব্যবহার।
       final savedName = (data['profileName'] ?? user.displayName ?? '')
           .toString()
           .trim();
@@ -97,8 +86,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
       final loadedPhotoUrl = (data['photoUrl'] ?? user.photoURL)?.toString();
 
-      // আগে profile document তৈরি না হয়ে থাকলে তৈরি করবে।
-      // সাধারণত Sign Up-এর সময়ই এটি তৈরি হওয়ার কথা।
       if (!snapshot.exists) {
         await reference.set({
           'uid': user.uid,
@@ -114,7 +101,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (!mounted) return;
 
-      // পাওয়া তথ্যগুলো screen-এ দেখানোর জন্য state-এ রাখা।
       setState(() {
         userName = loadedName;
         nickname = loadedNickname;
@@ -140,9 +126,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // ============================================================
   // EDIT PROFILE
-  // কাজ: Dialog খুলবে, user-এর পরিবর্তিত তথ্য নেবে এবং Firestore-
-  // এ save করবে। TextEditingController dialog নিজে পরিচালনা করবে।
-  // তাই আগের disposed-controller error হবে না।
   // ============================================================
 
   Future<void> _editProfile() async {
@@ -153,8 +136,6 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
-    // আলাদা StatefulWidget ব্যবহার করা হয়েছে।
-    // Dialog বন্ধ হলে তার controllers নিজে dispose হবে।
     final result = await showDialog<Map<String, String>>(
       context: context,
       builder: (_) => _EditProfileDialog(
@@ -164,7 +145,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
     );
 
-    // Cancel করলে কোনো data save হবে না।
     if (!mounted || result == null) return;
 
     setState(() {
@@ -172,8 +152,6 @@ class _ProfilePageState extends State<ProfilePage> {
     });
 
     try {
-      // পরিবর্তিত profile data Firestore-এ save করা হচ্ছে।
-      // merge: true থাকায় অন্য existing fields মুছে যাবে না।
       await _profileReference(user.uid).set({
         'uid': user.uid,
         'profileName': result['profileName']!,
@@ -184,9 +162,6 @@ class _ProfilePageState extends State<ProfilePage> {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // Firebase Authentication-এর display name-টিও update।
-      // Firestore save সফল হলেও Auth name update ব্যর্থ হলে
-      // সেটির কারণে profile save-কে ব্যর্থ দেখানো হবে না।
       try {
         await user.updateDisplayName(result['profileName']);
       } catch (error) {
@@ -195,7 +170,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (!mounted) return;
 
-      // Save সফল হলে সঙ্গে সঙ্গে screen update হবে।
       setState(() {
         userName = result['profileName']!;
         nickname = result['nickname']!;
@@ -210,7 +184,6 @@ class _ProfilePageState extends State<ProfilePage> {
         _showMessage('Could not save your profile. Please try again.');
       }
     } finally {
-      // Save শেষ হলে loading state বন্ধ করা।
       if (mounted) {
         setState(() {
           _isSaving = false;
@@ -219,26 +192,30 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // Logout করার আগে user-এর confirmation নেওয়া হবে।
+  // Logout করার আগে user-এর confirmation নেওয়া হবে।
   Future<void> _logout() async {
     final shouldLogout = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
+          icon: Icon(
+            Icons.logout_rounded,
+            color: Theme.of(dialogContext).colorScheme.error,
+            size: 32,
+          ),
           title: const Text('Log Out?'),
           content: const Text(
             'Are you sure you want to log out of ConnectHub?',
+            textAlign: TextAlign.center,
           ),
+          actionsAlignment: MainAxisAlignment.center,
           actions: [
-            // Cancel করলে dialog বন্ধ হবে।
             TextButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(false);
               },
               child: const Text('Cancel'),
             ),
-
-            // Confirm করলে logout হবে।
             FilledButton.icon(
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
@@ -251,15 +228,11 @@ class _ProfilePageState extends State<ProfilePage> {
       },
     );
 
-    // User Cancel করলে আর কোনো কাজ হবে না।
     if (shouldLogout != true) return;
 
     try {
-      // Firebase account থেকে Sign Out।
       await FirebaseAuth.instance.signOut();
-
-      // AuthGate-এর authStateChanges() নিজে থেকেই
-      // Welcome Page দেখাবে। আলাদা navigation লাগবে না।
+      // AuthGate-এর authStateChanges() নিজে থেকেই Welcome Page দেখাবে।
     } catch (error) {
       debugPrint('Logout error: $error');
 
@@ -268,11 +241,6 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     }
   }
-
-  // ============================================================
-  // SNACKBAR MESSAGE
-  // Save সফল বা ব্যর্থ হলে ছোট message দেখাবে।
-  // ============================================================
 
   void _showMessage(String message) {
     if (!mounted) return;
@@ -286,17 +254,187 @@ class _ProfilePageState extends State<ProfilePage> {
   // PROFILE UI
   // ============================================================
 
+  Widget _buildHeader(ThemeData theme, ColorScheme colors, String handle) {
+    final hasPhoto = photoUrl != null && photoUrl!.isNotEmpty;
+
+    return Column(
+      children: [
+        // Banner + avatar
+        Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.bottomCenter,
+          children: [
+            Container(
+              height: 130,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [colors.primary, colors.tertiary],
+                ),
+              ),
+              child: Stack(
+                children: [
+                  Positioned(
+                    top: -30,
+                    right: -20,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.10),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -40,
+                    left: -20,
+                    child: Container(
+                      width: 110,
+                      height: 110,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              bottom: -52,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: theme.scaffoldBackgroundColor,
+                ),
+                child: CircleAvatar(
+                  radius: 52,
+                  backgroundColor: colors.primaryContainer,
+                  backgroundImage: hasPhoto ? NetworkImage(photoUrl!) : null,
+                  child: hasPhoto
+                      ? null
+                      : Icon(
+                          Icons.person,
+                          size: 60,
+                          color: colors.onPrimaryContainer,
+                        ),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 62),
+
+        Text(
+          userName,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
+
+        const SizedBox(height: 6),
+
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: colors.primaryContainer,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            handle,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.onPrimaryContainer,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+
+        if (email.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.mail_outline,
+                size: 16,
+                color: colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  email,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+
+        const SizedBox(height: 16),
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            bio.isEmpty ? 'No bio added yet.' : bio,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              height: 1.55,
+              color: bio.isEmpty ? colors.onSurfaceVariant : null,
+              fontStyle: bio.isEmpty ? FontStyle.italic : null,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsCard(ThemeData theme, ColorScheme colors) {
+    final divider = Container(
+      width: 1,
+      height: 34,
+      color: colors.outlineVariant,
+    );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Expanded(child: _buildStat(context, 'Posts', '${posts.length}')),
+          divider,
+          Expanded(child: _buildStat(context, 'Followers', '128')),
+          divider,
+          Expanded(child: _buildStat(context, 'Following', '96')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    // Firebase থেকে তথ্য আসা পর্যন্ত loading indicator।
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // Profile load না হলে error এবং retry button।
     if (_errorMessage != null) {
       return Center(
         child: Padding(
@@ -304,10 +442,21 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.account_circle_outlined, size: 52),
-              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.account_circle_outlined,
+                  size: 42,
+                  color: colors.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(height: 16),
               Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               FilledButton.icon(
                 onPressed: _loadProfile,
                 icon: const Icon(Icons.refresh),
@@ -319,7 +468,6 @@ class _ProfilePageState extends State<ProfilePage> {
       );
     }
 
-    // Nickname না থাকলে নাম থেকে একটি fallback handle দেখাবে।
     final handle = nickname.isNotEmpty
         ? '@$nickname'
         : '@${userName.toLowerCase().replaceAll(RegExp(r'\s+'), '')}';
@@ -329,137 +477,46 @@ class _ProfilePageState extends State<ProfilePage> {
         constraints: const BoxConstraints(maxWidth: 900),
         child: CustomScrollView(
           slivers: [
-            // Profile information section।
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                 child: Column(
                   children: [
-                    
-                     // Profile title ও Logout button একই row-তে দেখাবে।
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            'My Profile',
-                                            style: theme.textTheme.headlineSmall?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-
-                                        const SizedBox(width: 8),
-
-                                        // Logout button।
-                                        TextButton.icon(
-                                          onPressed: _logout,
-                                          icon: const Icon(Icons.logout_rounded),
-                                          label: const Text('Logout'),
-                                          style: TextButton.styleFrom(
-                                            foregroundColor: colors.error,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                    
-
-                    const SizedBox(height: 28),
-
-                    // Firebase-এ photoUrl থাকলে ছবি দেখাবে।
-                    // না থাকলে default profile icon থাকবে।
-                    CircleAvatar(
-                      radius: 55,
-                      backgroundColor: colors.primary.withValues(alpha: 0.15),
-                      backgroundImage: photoUrl != null && photoUrl!.isNotEmpty
-                          ? NetworkImage(photoUrl!)
-                          : null,
-                      child: photoUrl == null || photoUrl!.isEmpty
-                          ? Icon(Icons.person, size: 65, color: colors.primary)
-                          : null,
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Firestore-এ save হওয়া Profile Name।
-                    Text(
-                      userName,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    // Custom nickname অথবা fallback handle।
-                    Text(
-                      handle,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    // Title + Logout
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'My Profile',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: _logout,
+                          icon: const Icon(Icons.logout_rounded, size: 20),
+                          label: const Text('Logout'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: colors.error,
+                          ),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 10),
 
-                    // Firebase Authentication-এর email।
-                    if (email.isNotEmpty)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.mail_outline,
-                            size: 16,
-                            color: colors.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 7),
-                          Flexible(
-                            child: Text(
-                              email,
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: colors.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    _buildHeader(theme, colors, handle),
+
+                    const SizedBox(height: 22),
+
+                    _buildStatsCard(theme, colors),
 
                     const SizedBox(height: 16),
 
-                    // নিজের Bio।
-                    Text(
-                      bio.isEmpty ? 'No bio added yet.' : bio,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // বর্তমান demo statistics।
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildStat(
-                            context,
-                            'Posts',
-                            '${posts.length}',
-                          ),
-                        ),
-                        Expanded(
-                          child: _buildStat(context, 'Followers', '128'),
-                        ),
-                        Expanded(child: _buildStat(context, 'Following', '96')),
-                      ],
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Edit button: চাপলে dialog খুলবে।
                     SizedBox(
                       width: double.infinity,
-                      child: OutlinedButton.icon(
+                      child: FilledButton.tonalIcon(
                         onPressed: _isSaving ? null : _editProfile,
                         icon: _isSaving
                             ? const SizedBox(
@@ -470,9 +527,15 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                               )
                             : const Icon(Icons.edit_outlined),
-                        label: Text(_isSaving ? 'Saving...' : 'Edit Profile'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        label: Text(
+                          _isSaving ? 'Saving...' : 'Edit Profile',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
                     ),
@@ -481,12 +544,23 @@ class _ProfilePageState extends State<ProfilePage> {
 
                     Row(
                       children: [
-                        Icon(Icons.grid_view_rounded, color: colors.primary),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: colors.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            Icons.grid_view_rounded,
+                            size: 20,
+                            color: colors.onPrimaryContainer,
+                          ),
+                        ),
                         const SizedBox(width: 10),
                         Text(
                           'My Posts',
                           style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
@@ -498,10 +572,9 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
 
-            // Posts grid।
-            // Responsive: বড় screen-এ 3 columns, অন্যথায় 2।
+            // Posts grid
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               sliver: SliverGrid(
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final post = posts[index];
@@ -510,24 +583,38 @@ class _ProfilePageState extends State<ProfilePage> {
 
                   return Container(
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(16),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          color.withValues(alpha: 0.20),
+                          color.withValues(alpha: 0.07),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(22),
                       border: Border.all(color: color.withValues(alpha: 0.25)),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(icon, size: 42, color: color),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.16),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(icon, size: 32, color: color),
+                        ),
                         const SizedBox(height: 12),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                           child: Text(
                             post['title'] as String,
                             textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
@@ -536,9 +623,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   );
                 }, childCount: posts.length),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: MediaQuery.sizeOf(context).width >= 700
-                      ? 3
-                      : 2,
+                  crossAxisCount:
+                      MediaQuery.sizeOf(context).width >= 700 ? 3 : 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                   childAspectRatio: 1,
@@ -546,14 +632,13 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            const SliverToBoxAdapter(child: SizedBox(height: 28)),
           ],
         ),
       ),
     );
   }
 
-  // Statistics widget পুনরায় ব্যবহার করার জন্য helper method।
   Widget _buildStat(BuildContext context, String label, String value) {
     final theme = Theme.of(context);
 
@@ -562,13 +647,13 @@ class _ProfilePageState extends State<ProfilePage> {
         Text(
           value,
           style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w800,
           ),
         ),
         const SizedBox(height: 4),
         Text(
           label,
-          style: theme.textTheme.bodyMedium?.copyWith(
+          style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
@@ -579,11 +664,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
 // ============================================================
 // EDIT PROFILE DIALOG
-//
-// গুরুত্বপূর্ণ:
-// এই dialog-এর controllers এই widget-এর নিজের state-এ থাকে।
-// Dialog বন্ধ হলে dispose() method সেগুলো dispose করে।
-// তাই parent method-এ আগেভাগে controller dispose করতে হয় না।
+// Controllers এই widget-এর নিজের state-এ থাকে এবং dispose() এ বন্ধ হয়।
 // ============================================================
 
 class _EditProfileDialog extends StatefulWidget {
@@ -602,10 +683,8 @@ class _EditProfileDialog extends StatefulWidget {
 }
 
 class _EditProfileDialogState extends State<_EditProfileDialog> {
-  // Input validation-এর জন্য form key।
   final _formKey = GlobalKey<FormState>();
 
-  // Dialog-এর input fields পরিচালনার controllers।
   late final TextEditingController _nameController;
   late final TextEditingController _nicknameController;
   late final TextEditingController _bioController;
@@ -614,17 +693,13 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
   void initState() {
     super.initState();
 
-    // আগের saved data input field-এ দেখাবে।
     _nameController = TextEditingController(text: widget.initialName);
-
     _nicknameController = TextEditingController(text: widget.initialNickname);
-
     _bioController = TextEditingController(text: widget.initialBio);
   }
 
   @override
   void dispose() {
-    // Dialog widget dispose হওয়ার সময়ই controllers dispose হবে।
     _nameController.dispose();
     _nicknameController.dispose();
     _bioController.dispose();
@@ -632,7 +707,6 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     super.dispose();
   }
 
-  // Input ঠিক থাকলে parent page-এ পরিবর্তিত data ফেরত পাঠানো।
   void _saveProfile() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -646,29 +720,56 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     });
   }
 
+  InputDecoration _decoration({
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool alignLabelWithHint = false,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon),
+      alignLabelWithHint: alignLabelWithHint,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Edit Profile'),
+    final colors = Theme.of(context).colorScheme;
 
+    return AlertDialog(
+      icon: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.primaryContainer,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(Icons.edit_outlined, color: colors.onPrimaryContainer),
+      ),
+      title: const Text('Edit Profile'),
       content: SizedBox(
         width: 420,
         child: SingleChildScrollView(
+          padding: const EdgeInsets.only(top: 8),
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Profile name field।
                 TextFormField(
                   controller: _nameController,
                   maxLength: 30,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Profile Name',
-                    hintText: 'Enter your name',
-                    prefixIcon: Icon(Icons.person_outline),
-                    border: OutlineInputBorder(),
+                  decoration: _decoration(
+                    label: 'Profile Name',
+                    hint: 'Enter your name',
+                    icon: Icons.person_outline,
                   ),
                   validator: (value) {
                     final name = value?.trim() ?? '';
@@ -687,16 +788,13 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
 
                 const SizedBox(height: 12),
 
-                // Nickname field: letters, numbers, underscore,
-                // এবং dot গ্রহণ করবে।
                 TextFormField(
                   controller: _nicknameController,
                   maxLength: 20,
-                  decoration: const InputDecoration(
-                    labelText: 'Nickname',
-                    hintText: 'e.g. tanjim45',
-                    prefixIcon: Icon(Icons.alternate_email),
-                    border: OutlineInputBorder(),
+                  decoration: _decoration(
+                    label: 'Nickname',
+                    hint: 'e.g. tanjim45',
+                    icon: Icons.alternate_email,
                   ),
                   validator: (value) {
                     final nick = (value ?? '').trim().replaceFirst(
@@ -704,7 +802,6 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
                       '',
                     );
 
-                    // Nickname ফাঁকা রাখাও যাবে।
                     if (nick.isEmpty) return null;
 
                     if (!RegExp(r'^[a-zA-Z0-9_.]{3,20}$').hasMatch(nick)) {
@@ -717,16 +814,14 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
 
                 const SizedBox(height: 12),
 
-                // Bio field: সর্বোচ্চ 120 characters।
                 TextFormField(
                   controller: _bioController,
                   maxLength: 120,
                   maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Bio',
-                    hintText: 'Tell people about yourself...',
-                    prefixIcon: Icon(Icons.info_outline),
-                    border: OutlineInputBorder(),
+                  decoration: _decoration(
+                    label: 'Bio',
+                    hint: 'Tell people about yourself...',
+                    icon: Icons.info_outline,
                     alignLabelWithHint: true,
                   ),
                 ),
@@ -735,15 +830,11 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
           ),
         ),
       ),
-
       actions: [
-        // Cancel করলে dialog বন্ধ হবে, কোনো data save হবে না।
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
-
-        // Validate করে পরিবর্তিত data parent-এ ফেরত পাঠাবে।
         FilledButton.icon(
           onPressed: _saveProfile,
           icon: const Icon(Icons.save_outlined),

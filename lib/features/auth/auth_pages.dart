@@ -8,6 +8,12 @@ const Color _ink = Color(0xFF202344);
 const Color _muted = Color(0xFF747994);
 const Color _pageBackground = Color(0xFFF5F6FC);
 
+final RegExp _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+// ============================================================
+// WELCOME PAGE
+// ============================================================
+
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
 
@@ -26,229 +32,310 @@ class WelcomePage extends StatelessWidget {
             colors: [Color(0xFF202457), Color(0xFF5148B9), Color(0xFF8061E9)],
           ),
         ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 470),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 26,
-                    vertical: 28,
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            height: 54,
-                            width: 54,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.24),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.hub_rounded,
-                              color: Colors.white,
-                              size: 31,
-                            ),
-                          ),
-                          const SizedBox(width: 13),
-                          const Text(
-                            'ConnectHub',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 27,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.7,
-                            ),
-                          ),
-                        ],
+        child: Stack(
+          children: [
+            // Soft decorative circles
+            Positioned(
+              top: -90,
+              right: -70,
+              child: _GlowCircle(size: 260, alpha: 0.07),
+            ),
+            Positioned(
+              bottom: -110,
+              left: -80,
+              child: _GlowCircle(size: 300, alpha: 0.06),
+            ),
+            Positioned(
+              top: 220,
+              left: -40,
+              child: _GlowCircle(size: 110, alpha: 0.05),
+            ),
+            SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 470),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 26,
+                        vertical: 28,
                       ),
-
-                      const SizedBox(height: 48),
-
-                      // Decorative illustration
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 25,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.18),
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _FadeSlide(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                _PersonBubble(
-                                  color: const Color(0xFFFFD7BA),
-                                  icon: Icons.person_rounded,
-                                  size: 65,
+                                Container(
+                                  height: 54,
+                                  width: 54,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.16),
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.24),
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.hub_rounded,
+                                    color: Colors.white,
+                                    size: 31,
+                                  ),
                                 ),
                                 const SizedBox(width: 13),
-                                _PersonBubble(
-                                  color: const Color(0xFFC9C5FF),
-                                  icon: Icons.person_rounded,
-                                  size: 81,
-                                ),
-                                const SizedBox(width: 13),
-                                _PersonBubble(
-                                  color: const Color(0xFFB9E9DB),
-                                  icon: Icons.person_rounded,
-                                  size: 65,
+                                const Text(
+                                  'ConnectHub',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 27,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.7,
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 22),
-                            const Text(
-                              'Good people. Great connections.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 7),
-                            Text(
-                              'Your own space to connect and share.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.75),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 35),
-
-                      const Text(
-                        'Your world,',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 39,
-                          height: 1.15,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1.3,
-                        ),
-                      ),
-                      const Text(
-                        'more connected.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Color(0xFFDCD7FF),
-                          fontSize: 34,
-                          height: 1.3,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -1.0,
-                        ),
-                      ),
-
-                      const SizedBox(height: 14),
-
-                      Text(
-                        'Meet people, express yourself, and build '
-                        'meaningful connections in one place.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.82),
-                          fontSize: 15,
-                          height: 1.65,
-                        ),
-                      ),
-
-                      const SizedBox(height: 33),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton(
-                          onPressed: () =>
-                              _openPage(context, const SignUpPage()),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: _primary,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
                           ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Get Started',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
+
+                          const SizedBox(height: 44),
+
+                          // Illustration card
+                          _FadeSlide(
+                            delayMs: 120,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 22,
+                                vertical: 26,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(32),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.18),
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 40,
+                                    offset: const Offset(0, 20),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: 10),
-                              Icon(Icons.arrow_forward_rounded),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 17),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Already have an account?',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.83),
-                              fontSize: 13,
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: const [
+                                      _PersonBubble(
+                                        color: Color(0xFFFFD7BA),
+                                        icon: Icons.person_rounded,
+                                        size: 65,
+                                      ),
+                                      SizedBox(width: 13),
+                                      _PersonBubble(
+                                        color: Color(0xFFC9C5FF),
+                                        icon: Icons.person_rounded,
+                                        size: 81,
+                                      ),
+                                      SizedBox(width: 13),
+                                      _PersonBubble(
+                                        color: Color(0xFFB9E9DB),
+                                        icon: Icons.person_rounded,
+                                        size: 65,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 22),
+                                  const Text(
+                                    'Good people. Great connections.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Text(
+                                    'Your own space to connect and share.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.75),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          TextButton(
-                            onPressed: () =>
-                                _openPage(context, const LoginPage()),
-                            child: const Text(
-                              'Log In',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                              ),
+
+                          const SizedBox(height: 36),
+
+                          _FadeSlide(
+                            delayMs: 240,
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'Your world,',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 39,
+                                    height: 1.15,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -1.3,
+                                  ),
+                                ),
+                                const Text(
+                                  'more connected.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Color(0xFFDCD7FF),
+                                    fontSize: 34,
+                                    height: 1.3,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -1.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Text(
+                                  'Meet people, express yourself, and build '
+                                  'meaningful connections in one place.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.82),
+                                    fontSize: 15,
+                                    height: 1.65,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 34),
+
+                          _FadeSlide(
+                            delayMs: 360,
+                            child: Column(
+                              children: [
+                                Container(
+                                  width: double.infinity,
+                                  height: 58,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black
+                                            .withValues(alpha: 0.18),
+                                        blurRadius: 24,
+                                        offset: const Offset(0, 10),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed: () => _openPage(
+                                      context,
+                                      const SignUpPage(),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: _primary,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          'Get Started',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                        SizedBox(width: 10),
+                                        Icon(Icons.arrow_forward_rounded),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Already have an account?',
+                                      style: TextStyle(
+                                        color:
+                                            Colors.white.withValues(alpha: 0.83),
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _openPage(
+                                        context,
+                                        const LoginPage(),
+                                      ),
+                                      child: const Text(
+                                        'Log In',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+
+                          Text(
+                            'CONNECT • SHARE • GROW',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.57),
+                              fontSize: 10,
+                              letterSpacing: 2,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 16),
-
-                      Text(
-                        'CONNECT • SHARE • GROW',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.57),
-                          fontSize: 10,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+class _GlowCircle extends StatelessWidget {
+  final double size;
+  final double alpha;
+
+  const _GlowCircle({required this.size, required this.alpha});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: alpha),
       ),
     );
   }
@@ -273,17 +360,52 @@ class _PersonBubble extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.8),
-          width: 3,
-        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Icon(icon, color: const Color(0xFF34365F), size: size * 0.52),
     );
   }
 }
 
+// Fade + slide-up entrance animation.
+class _FadeSlide extends StatelessWidget {
+  final Widget child;
+  final int delayMs;
+
+  const _FadeSlide({required this.child, this.delayMs = 0});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = 500 + delayMs;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: total),
+      curve: Interval(delayMs / total, 1.0, curve: Curves.easeOutCubic),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, (1 - value) * 20),
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+// ============================================================
 // LOGIN PAGE
+// ============================================================
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -349,8 +471,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _resetPassword() async {
     final email = _emailController.text.trim();
 
-    if (email.isEmpty ||
-        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+    if (email.isEmpty || !_emailRegex.hasMatch(email)) {
       _showMessage('Enter your valid email address first.');
       return;
     }
@@ -382,11 +503,12 @@ class _LoginPageState extends State<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const _AuthHeading(
+                icon: Icons.waving_hand_rounded,
                 title: 'Welcome back!',
                 subtitle: 'Log in to continue to ConnectHub.',
               ),
 
-              const SizedBox(height: 27),
+              const SizedBox(height: 26),
 
               _AuthInput(
                 controller: _emailController,
@@ -398,7 +520,7 @@ class _LoginPageState extends State<LoginPage> {
                 validator: (value) {
                   final email = value?.trim() ?? '';
                   if (email.isEmpty) return 'Email is required.';
-                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+                  if (!_emailRegex.hasMatch(email)) {
                     return 'Enter a valid email address.';
                   }
                   return null;
@@ -451,38 +573,13 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 14),
               ],
 
-              SizedBox(
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Log In',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                ),
+              _PrimaryButton(
+                label: 'Log In',
+                loading: _loading,
+                onPressed: _login,
               ),
 
-              const SizedBox(height: 23),
+              const SizedBox(height: 22),
               const _OrDivider(),
               const SizedBox(height: 20),
 
@@ -492,7 +589,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
 
-              const SizedBox(height: 23),
+              const SizedBox(height: 20),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -531,7 +628,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
+// ============================================================
 // SIGN UP PAGE
+// ============================================================
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -561,6 +660,12 @@ class _SignUpPageState extends State<SignUpPage> {
     super.dispose();
   }
 
+  Future<void> _signOutQuietly() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {}
+  }
+
   Future<void> _signUp() async {
     FocusScope.of(context).unfocus();
 
@@ -575,11 +680,11 @@ class _SignUpPageState extends State<SignUpPage> {
 
     try {
       // 1. Firebase Authentication-এ account তৈরি
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+      final credential =
+          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
       final user = credential.user;
 
@@ -606,21 +711,17 @@ class _SignUpPageState extends State<SignUpPage> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // 4. Account তৈরি হয়েছে, তাই এবার sign out
+      // 4. Account তৈরি হয়েছে, তাই এবার sign out
       await FirebaseAuth.instance.signOut();
 
       if (!mounted) return;
 
-      // 5. Login Page-এ নিয়ে যাওয়া
+      // 5. Login Page-এ নিয়ে যাওয়া
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(builder: (_) => const LoginPage()),
       );
     } on FirebaseAuthException catch (error) {
-      if (accountCreated) {
-        try {
-          await FirebaseAuth.instance.signOut();
-        } catch (_) {}
-      }
+      if (accountCreated) await _signOutQuietly();
 
       if (!mounted) return;
 
@@ -630,11 +731,7 @@ class _SignUpPageState extends State<SignUpPage> {
             : _friendlyAuthError(error);
       });
     } on FirebaseException catch (error) {
-      if (accountCreated) {
-        try {
-          await FirebaseAuth.instance.signOut();
-        } catch (_) {}
-      }
+      if (accountCreated) await _signOutQuietly();
 
       if (!mounted) return;
 
@@ -644,11 +741,7 @@ class _SignUpPageState extends State<SignUpPage> {
             : (error.message ?? 'Firebase error. Please try again.');
       });
     } catch (_) {
-      if (accountCreated) {
-        try {
-          await FirebaseAuth.instance.signOut();
-        } catch (_) {}
-      }
+      if (accountCreated) await _signOutQuietly();
 
       if (!mounted) return;
 
@@ -680,11 +773,12 @@ class _SignUpPageState extends State<SignUpPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const _AuthHeading(
+                icon: Icons.rocket_launch_rounded,
                 title: 'Create your account',
                 subtitle: 'Join ConnectHub and start connecting.',
               ),
 
-              const SizedBox(height: 25),
+              const SizedBox(height: 24),
 
               _AuthInput(
                 controller: _nameController,
@@ -716,7 +810,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 validator: (value) {
                   final email = value?.trim() ?? '';
                   if (email.isEmpty) return 'Email is required.';
-                  if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+                  if (!_emailRegex.hasMatch(email)) {
                     return 'Enter a valid email address.';
                   }
                   return null;
@@ -752,6 +846,8 @@ class _SignUpPageState extends State<SignUpPage> {
                   return null;
                 },
               ),
+
+              _PasswordStrength(controller: _passwordController),
 
               const SizedBox(height: 16),
 
@@ -789,42 +885,17 @@ class _SignUpPageState extends State<SignUpPage> {
                 _ErrorMessage(message: _errorMessage!),
               ],
 
-              const SizedBox(height: 23),
+              const SizedBox(height: 22),
 
-              SizedBox(
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _signUp,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Create Account',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                ),
+              _PrimaryButton(
+                label: 'Create Account',
+                loading: _loading,
+                onPressed: _signUp,
               ),
 
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
               const _OrDivider(),
-              const SizedBox(height: 19),
+              const SizedBox(height: 18),
 
               _GoogleSignInButton(
                 onPressed: () => _showMessage(
@@ -832,7 +903,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
 
-              const SizedBox(height: 21),
+              const SizedBox(height: 18),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -871,7 +942,9 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 }
 
-// Shared UI widgets
+// ============================================================
+// SHARED UI WIDGETS
+// ============================================================
 
 class _AuthFrame extends StatelessWidget {
   final Widget child;
@@ -882,46 +955,96 @@ class _AuthFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _pageBackground,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Center(
+      body: Stack(
+        children: [
+          // Soft background blobs
+          Positioned(
+            top: -100,
+            right: -80,
+            child: Container(
+              width: 280,
+              height: 280,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _primary.withValues(alpha: 0.10),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: -120,
+            left: -90,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _purple.withValues(alpha: 0.09),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 460),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 28,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const _BrandHeader(),
-                          const SizedBox(height: 28),
-                          child,
-                          const SizedBox(height: 23),
-                          const Text(
-                            'YOUR SPACE. YOUR PEOPLE.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: _muted,
-                              fontSize: 10,
-                              letterSpacing: 2,
-                              fontWeight: FontWeight.w700,
-                            ),
+                    constraints:
+                        BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 460),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 22,
+                            vertical: 24,
                           ),
-                        ],
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: Navigator.of(context).canPop()
+                                    ? IconButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).maybePop(),
+                                        style: IconButton.styleFrom(
+                                          backgroundColor: Colors.white,
+                                          side: const BorderSide(
+                                            color: Color(0xFFE9EAF4),
+                                          ),
+                                        ),
+                                        icon: const Icon(
+                                          Icons.arrow_back_rounded,
+                                          color: _ink,
+                                        ),
+                                      )
+                                    : const SizedBox(height: 40),
+                              ),
+                              const SizedBox(height: 8),
+                              const _FadeSlide(child: _BrandHeader()),
+                              const SizedBox(height: 26),
+                              _FadeSlide(delayMs: 120, child: child),
+                              const SizedBox(height: 22),
+                              const Text(
+                                'YOUR SPACE. YOUR PEOPLE.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: _muted,
+                                  fontSize: 10,
+                                  letterSpacing: 2,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
-            );
-          },
-        ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -936,11 +1059,18 @@ class _BrandHeader extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
-          height: 45,
-          width: 45,
+          height: 46,
+          width: 46,
           decoration: BoxDecoration(
             gradient: const LinearGradient(colors: [_primary, _purple]),
             borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: _primary.withValues(alpha: 0.35),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: const Icon(Icons.hub_rounded, color: Colors.white, size: 26),
         ),
@@ -968,16 +1098,16 @@ class _AuthCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(23),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
+        borderRadius: BorderRadius.circular(28),
         border: Border.all(color: const Color(0xFFE9EAF4)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF34365F).withValues(alpha: 0.06),
-            blurRadius: 30,
-            offset: const Offset(0, 12),
+            color: const Color(0xFF34365F).withValues(alpha: 0.08),
+            blurRadius: 40,
+            offset: const Offset(0, 18),
           ),
         ],
       ),
@@ -987,29 +1117,50 @@ class _AuthCard extends StatelessWidget {
 }
 
 class _AuthHeading extends StatelessWidget {
+  final IconData icon;
   final String title;
   final String subtitle;
 
-  const _AuthHeading({required this.title, required this.subtitle});
+  const _AuthHeading({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: _ink,
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.7,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.7,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                style: const TextStyle(color: _muted, fontSize: 14, height: 1.5),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          style: const TextStyle(color: _muted, fontSize: 14, height: 1.5),
+        const SizedBox(width: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: _primary.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Icon(icon, color: _primary, size: 24),
         ),
       ],
     );
@@ -1075,28 +1226,158 @@ class _AuthInput extends StatelessWidget {
               horizontal: 15,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: Color(0xFFE5E7F1)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: Color(0xFFE5E7F1)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: _primary, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: Colors.redAccent),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+// Small strength meter shown under the sign-up password field.
+class _PasswordStrength extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _PasswordStrength({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, child) {
+        final password = value.text;
+        if (password.isEmpty) return const SizedBox.shrink();
+
+        var score = 0;
+        if (password.length >= 6) score++;
+        if (password.length >= 10) score++;
+        if (RegExp(r'[A-Z]').hasMatch(password) &&
+            RegExp(r'[0-9]').hasMatch(password)) {
+          score++;
+        }
+
+        const labels = ['Weak', 'Okay', 'Good', 'Strong'];
+        final colors = [
+          Colors.redAccent,
+          Colors.orange,
+          _primary,
+          Colors.green,
+        ];
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: List.generate(4, (index) {
+                    return Expanded(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        height: 4,
+                        margin: EdgeInsets.only(right: index == 3 ? 0 : 5),
+                        decoration: BoxDecoration(
+                          color: index <= score
+                              ? colors[score]
+                              : const Color(0xFFE5E7F1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                labels[score],
+                style: TextStyle(
+                  color: colors[score],
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PrimaryButton extends StatelessWidget {
+  final String label;
+  final bool loading;
+  final VoidCallback onPressed;
+
+  const _PrimaryButton({
+    required this.label,
+    required this.loading,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(17),
+        boxShadow: loading
+            ? null
+            : [
+                BoxShadow(
+                  color: _primary.withValues(alpha: 0.32),
+                  blurRadius: 20,
+                  offset: const Offset(0, 9),
+                ),
+              ],
+      ),
+      child: ElevatedButton(
+        onPressed: loading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _primary,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: _primary.withValues(alpha: 0.7),
+          disabledForegroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(17),
+          ),
+        ),
+        child: loading
+            ? const SizedBox(
+                height: 22,
+                width: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: Colors.white,
+                ),
+              )
+            : Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+      ),
     );
   }
 }
@@ -1110,20 +1391,21 @@ class _GoogleSignInButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: 54,
       child: OutlinedButton(
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           foregroundColor: _ink,
+          backgroundColor: Colors.white,
           side: const BorderSide(color: Color(0xFFE2E4EF)),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(17),
           ),
         ),
-        child: Row(
+        child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               'G',
               style: TextStyle(
                 color: Color(0xFF4285F4),
@@ -1131,9 +1413,9 @@ class _GoogleSignInButton extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(width: 11),
+            SizedBox(width: 11),
             Text(
-              'Sign in with Google',
+              'Continue with Google',
               style: TextStyle(color: _ink, fontWeight: FontWeight.w700),
             ),
           ],
@@ -1148,11 +1430,11 @@ class _OrDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       children: [
-        const Expanded(child: Divider(color: Color(0xFFE6E7F0))),
+        Expanded(child: Divider(color: Color(0xFFE6E7F0))),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: 12),
           child: Text(
             'OR',
             style: TextStyle(
@@ -1163,7 +1445,7 @@ class _OrDivider extends StatelessWidget {
             ),
           ),
         ),
-        const Expanded(child: Divider(color: Color(0xFFE6E7F0))),
+        Expanded(child: Divider(color: Color(0xFFE6E7F0))),
       ],
     );
   }
@@ -1181,16 +1463,29 @@ class _ErrorMessage extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFFFFEEEE),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFFFD2D2)),
       ),
-      child: Text(
-        message,
-        style: const TextStyle(
-          color: Color(0xFFB3261E),
-          fontSize: 13,
-          height: 1.4,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Color(0xFFB3261E),
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: Color(0xFFB3261E),
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
