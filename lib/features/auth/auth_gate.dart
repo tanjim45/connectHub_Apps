@@ -1,6 +1,6 @@
+import 'package:connecthub/features/auth/welcome_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:connecthub/features/auth/auth_pages.dart';
 import 'package:connecthub/features/home_page.dart';
 
 class AuthGate extends StatelessWidget {
