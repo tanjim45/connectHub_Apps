@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'auth_widgets.dart';
+import 'google_auth_service.dart';
 import 'signup_page.dart';
 
 final RegExp emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
@@ -19,6 +20,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _hidePassword = true;
   bool _loading = false;
+  bool _googleLoading = false;
   String? _errorMessage;
 
   @override
@@ -66,6 +68,39 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _googleLogin() async {
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _googleLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await GoogleAuthService.instance.signInWithGoogle();
+
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    } on FirebaseAuthException catch (error) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = friendlyAuthError(error);
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = error.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _googleLoading = false);
+      }
+    }
+  }
+
   Future<void> _resetPassword() async {
     final email = _emailController.text.trim();
 
@@ -87,12 +122,17 @@ class _LoginPageState extends State<LoginPage> {
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = _loading || _googleLoading;
+
     return AuthFrame(
       child: AuthCard(
         child: Form(
@@ -117,10 +157,12 @@ class _LoginPageState extends State<LoginPage> {
                 autofillHints: const [AutofillHints.email],
                 validator: (value) {
                   final email = value?.trim() ?? '';
+
                   if (email.isEmpty) return 'Email is required.';
                   if (!emailRegex.hasMatch(email)) {
                     return 'Enter a valid email address.';
                   }
+
                   return null;
                 },
               ),
@@ -148,6 +190,7 @@ class _LoginPageState extends State<LoginPage> {
                   if (value == null || value.isEmpty) {
                     return 'Password is required.';
                   }
+
                   return null;
                 },
               ),
@@ -155,7 +198,7 @@ class _LoginPageState extends State<LoginPage> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: _loading ? null : _resetPassword,
+                  onPressed: isLoading ? null : _resetPassword,
                   child: const Text(
                     'Forgot password?',
                     style: TextStyle(
@@ -174,7 +217,7 @@ class _LoginPageState extends State<LoginPage> {
               PrimaryButton(
                 label: 'Log In',
                 loading: _loading,
-                onPressed: _login,
+                onPressed: isLoading ? () {} : _login,
               ),
 
               const SizedBox(height: 22),
@@ -182,10 +225,22 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 20),
 
               GoogleSignInButton(
-                onPressed: () => _showMessage(
-                  'Google Sign-In will be connected in the next step.',
-                ),
+                onPressed: isLoading ? () {} : _googleLogin,
               ),
+
+              if (_googleLoading) ...[
+                const SizedBox(height: 12),
+                const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 20),
 
@@ -195,11 +250,14 @@ class _LoginPageState extends State<LoginPage> {
                   const Flexible(
                     child: Text(
                       "Don't have an account?",
-                      style: TextStyle(color: mutedColor, fontSize: 13),
+                      style: TextStyle(
+                        color: mutedColor,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   TextButton(
-                    onPressed: _loading
+                    onPressed: isLoading
                         ? null
                         : () {
                             Navigator.of(context).pushReplacement(
@@ -225,4 +283,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-

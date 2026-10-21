@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'auth_widgets.dart';
+import 'google_auth_service.dart';
 import 'login_page.dart' hide emailRegex;
 
 class SignUpPage extends StatefulWidget {
@@ -21,6 +22,7 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _hidePassword = true;
   bool _hideConfirmPassword = true;
   bool _loading = false;
+  bool _googleLoading = false;
   String? _errorMessage;
 
   @override
@@ -30,12 +32,6 @@ class _SignUpPageState extends State<SignUpPage> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _signOutQuietly() async {
-    try {
-      await FirebaseAuth.instance.signOut();
-    } catch (_) {}
   }
 
   Future<void> _signUp() async {
@@ -51,7 +47,6 @@ class _SignUpPageState extends State<SignUpPage> {
     bool accountCreated = false;
 
     try {
-      // 1. Firebase Authentication-এ account তৈরি
       final credential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
@@ -68,10 +63,8 @@ class _SignUpPageState extends State<SignUpPage> {
 
       final name = _nameController.text.trim();
 
-      // 2. Firebase Auth profile-এ নাম সংরক্ষণ
       await user.updateDisplayName(name);
 
-      // 3. Firestore-এ user profile তৈরি
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'uid': user.uid,
         'profileName': name,
@@ -83,17 +76,21 @@ class _SignUpPageState extends State<SignUpPage> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      // 4. Account তৈরি হয়েছে, তাই এবার sign out
       await FirebaseAuth.instance.signOut();
 
       if (!mounted) return;
 
-      // 5. Login Page-এ নিয়ে যাওয়া
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const LoginPage()),
+        MaterialPageRoute<void>(
+          builder: (_) => const LoginPage(),
+        ),
       );
     } on FirebaseAuthException catch (error) {
-      if (accountCreated) await _signOutQuietly();
+      if (accountCreated) {
+        try {
+          await FirebaseAuth.instance.signOut();
+        } catch (_) {}
+      }
 
       if (!mounted) return;
 
@@ -103,7 +100,11 @@ class _SignUpPageState extends State<SignUpPage> {
             : friendlyAuthError(error);
       });
     } on FirebaseException catch (error) {
-      if (accountCreated) await _signOutQuietly();
+      if (accountCreated) {
+        try {
+          await FirebaseAuth.instance.signOut();
+        } catch (_) {}
+      }
 
       if (!mounted) return;
 
@@ -113,7 +114,11 @@ class _SignUpPageState extends State<SignUpPage> {
             : (error.message ?? 'Firebase error. Please try again.');
       });
     } catch (_) {
-      if (accountCreated) await _signOutQuietly();
+      if (accountCreated) {
+        try {
+          await FirebaseAuth.instance.signOut();
+        } catch (_) {}
+      }
 
       if (!mounted) return;
 
@@ -129,14 +134,44 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
-    );
+  Future<void> _googleSignUp() async {
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _googleLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await GoogleAuthService.instance.signInWithGoogle();
+
+      if (!mounted) return;
+
+      // AuthGate detects the signed-in user and opens the app.
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } on FirebaseAuthException catch (error) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = friendlyAuthError(error);
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = error.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _googleLoading = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = _loading || _googleLoading;
+
     return AuthFrame(
       child: AuthCard(
         child: Form(
@@ -262,7 +297,7 @@ class _SignUpPageState extends State<SignUpPage> {
               PrimaryButton(
                 label: 'Create Account',
                 loading: _loading,
-                onPressed: _signUp,
+                onPressed: isLoading ? () {} : _signUp,
               ),
 
               const SizedBox(height: 20),
@@ -270,10 +305,22 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 18),
 
               GoogleSignInButton(
-                onPressed: () => _showMessage(
-                  'Google Sign-In will be connected in the next step.',
-                ),
+                onPressed: isLoading ? () {} : _googleSignUp,
               ),
+
+              if (_googleLoading) ...[
+                const SizedBox(height: 12),
+                const Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 18),
 
@@ -283,11 +330,14 @@ class _SignUpPageState extends State<SignUpPage> {
                   const Flexible(
                     child: Text(
                       'Already registered?',
-                      style: TextStyle(color: mutedColor, fontSize: 13),
+                      style: TextStyle(
+                        color: mutedColor,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   TextButton(
-                    onPressed: _loading
+                    onPressed: isLoading
                         ? null
                         : () {
                             Navigator.of(context).pushReplacement(
@@ -313,4 +363,3 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 }
-
